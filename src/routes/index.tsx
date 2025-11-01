@@ -20,7 +20,7 @@ type Result = {
 };
 
 const generateFromPrompt = createServerFn({ method: "POST" })
-  .inputValidator((d: { prompt: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
+  .inputValidator((d: { prompt: string; context?: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
   .handler(async ({ data }) => {
     const userPrompt = (data?.prompt || "").trim();
     if (!userPrompt) {
@@ -36,6 +36,8 @@ const generateFromPrompt = createServerFn({ method: "POST" })
         - An ingredients list
         - Numbered steps
         - Optional tips
+
+        ${data?.context ? `Consider these preferences and adapt the recipe: ${data.context}` : ""}
 
         Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
         Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
@@ -157,7 +159,11 @@ function App() {
   const getCacheKey = (u: string, c?: string) =>
     `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
   // Unit providers and settings are now handled globally in the root layout
-  const { language, region } = useSettings();
+  const { language, region, context: globalContext } = useSettings();
+  const combinedContext = useMemo(() => {
+    const parts = [globalContext, context].map((s) => (s || "").trim()).filter(Boolean)
+    return parts.join("\n")
+  }, [globalContext, context]);
 
   useEffect(() => {
     let cancelled = false;
@@ -166,7 +172,7 @@ function App() {
       // Try cache first to avoid redundant requests on reload
       if (url) {
         try {
-          const raw = localStorage.getItem(getCacheKey(url, context));
+          const raw = localStorage.getItem(getCacheKey(url, combinedContext));
           if (raw) {
             const cached = JSON.parse(raw) as { mdx?: string };
             if (cached?.mdx) {
@@ -188,12 +194,12 @@ function App() {
         if (url) {
           const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
           const languageLabel = getLanguageLabel(language as any);
-          const res = await processRecipe({ data: { url, context, language, region, languageLabel, regionLabel, regionFlag } });
+          const res = await processRecipe({ data: { url, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
           if (!cancelled) {
             setMdx(res.mdx);
             try {
               localStorage.setItem(
-                getCacheKey(url, context),
+                getCacheKey(url, combinedContext),
                 JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
               );
             } catch {}
@@ -201,7 +207,7 @@ function App() {
         } else if (prompt) {
           const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
           const languageLabel = getLanguageLabel(language as any);
-          const res = await generateFromPrompt({ data: { prompt, language, region, languageLabel, regionLabel, regionFlag } });
+          const res = await generateFromPrompt({ data: { prompt, context: globalContext, language, region, languageLabel, regionLabel, regionFlag } });
           if (!cancelled) setMdx(res.mdx);
         }
       } catch (err: any) {
@@ -214,7 +220,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [url, prompt, context]);
+  }, [url, prompt, context, language, region, globalContext, combinedContext]);
 
   const components = useMemo(() => {
     return { Temperature, Weight, Volume, Length } as Record<string, any>;

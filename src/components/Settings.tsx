@@ -33,6 +33,8 @@ export type Settings = {
   setLanguage: (v: LanguageCode) => void
   region: RegionCode
   setRegion: (v: RegionCode) => void
+  context: string
+  setContext: (v: string) => void
 }
 
 const SettingsContext = createContext<Settings | null>(null)
@@ -46,4 +48,3 @@ export function useSettings() {
   if (!ctx) throw new Error('useSettings must be used within SettingsProvider')
   return ctx
 }
-

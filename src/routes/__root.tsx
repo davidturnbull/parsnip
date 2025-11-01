@@ -57,6 +57,7 @@ function RootLayout() {
   const [system, setSystem] = useState<'metric' | 'imperial'>('metric')
   const [language, setLanguage] = useState<LanguageCode>('en')
   const [region, setRegion] = useState<RegionCode>('US')
+  const [context, setContext] = useState<string>('')
 
   // Load saved unit preference
   useEffect(() => {
@@ -82,6 +83,13 @@ function RootLayout() {
     } catch {}
   }, [])
 
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('parsnip-context')
+      if (typeof saved === 'string') setContext(saved)
+    } catch {}
+  }, [])
+
   // Persist unit preference
   useEffect(() => {
     try {
@@ -101,6 +109,12 @@ function RootLayout() {
     } catch {}
   }, [region])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('parsnip-context', context)
+    } catch {}
+  }, [context])
+
   const tempUnit = useMemo(
     () => (system === 'imperial' ? ('fahrenheit' as const) : ('celsius' as const)),
     [system],
@@ -115,6 +129,8 @@ function RootLayout() {
         setLanguage,
         region,
         setRegion,
+        context,
+        setContext,
       }}
     >
       <TemperatureProvider unit={tempUnit}>

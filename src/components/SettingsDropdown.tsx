@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { LANGUAGES, REGIONS, type LanguageCode, type RegionCode, useSettings } from '@/components/Settings'
 
 export function SettingsDropdown() {
-  const { system, setSystem, language, setLanguage, region, setRegion } = useSettings()
+  const { system, setSystem, language, setLanguage, region, setRegion, context, setContext } = useSettings()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -98,6 +98,19 @@ export function SettingsDropdown() {
                     <span className="opacity-40" aria-hidden="true">◯</span>
                   )}
                 </button>
+                </div>
+              </section>
+
+              <section>
+                <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">Context</div>
+                <div className="mt-2">
+                  <textarea
+                    value={context}
+                    onChange={(e) => setContext(e.target.value)}
+                    placeholder="Dietary preferences, allergies, tools, style, audience..."
+                    className="w-full min-h-24 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm font-sans text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <div className="mt-1 text-xs text-primary-dark/60">This will be included with all generations and imports.</div>
                 </div>
               </section>
 
