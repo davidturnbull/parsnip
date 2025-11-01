@@ -2,11 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { LANGUAGES, REGIONS, type LanguageCode, type RegionCode, useSettings } from '@/components/Settings'
 import { usePaymentStatus } from '@/hooks/usePaymentStatus'
 import { Paywall } from '@/components/PaywallOverlay'
+import { loadMCPConfigs, type MCPConfig } from '@/api/mcp-config'
 
 export function SettingsDropdown() {
   const { system, setSystem, language, setLanguage, region, setRegion, context, setContext } = useSettings()
   const { hasPaid } = usePaymentStatus()
   const [open, setOpen] = useState(false)
+  const [showAddMCP, setShowAddMCP] = useState(false)
+  const [mcpConfigs, setMcpConfigs] = useState<MCPConfig[]>([])
+  const [newMCPName, setNewMCPName] = useState('')
+  const [newMCPCommand, setNewMCPCommand] = useState('npx')
+  const [newMCPArgs, setNewMCPArgs] = useState('@modelcontextprotocol/server-sequential-thinking')
   const menuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -28,6 +34,51 @@ export function SettingsDropdown() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
+
+  // Load MCP configs
+  useEffect(() => {
+    const configs = loadMCPConfigs()
+    setMcpConfigs(configs)
+  }, [])
+
+  // Save MCP configs
+  const saveMCPConfigs = (configs: MCPConfig[]) => {
+    try {
+      localStorage.setItem('parsnip-mcps', JSON.stringify(configs))
+      setMcpConfigs(configs)
+    } catch (error) {
+      console.error('Failed to save MCP configs:', error)
+    }
+  }
+
+  const toggleMCP = (id: string) => {
+    const updated = mcpConfigs.map(c => 
+      c.id === id ? { ...c, enabled: !c.enabled } : c
+    )
+    saveMCPConfigs(updated)
+  }
+
+  const removeMCP = (id: string) => {
+    const updated = mcpConfigs.filter(c => c.id !== id)
+    saveMCPConfigs(updated)
+  }
+
+  const addMCP = () => {
+    const id = `mcp-${Date.now()}`
+    const args = newMCPArgs.split(',').map(a => a.trim()).filter(Boolean)
+    const newConfig: MCPConfig = {
+      id,
+      name: newMCPName || 'Unnamed MCP',
+      command: newMCPCommand,
+      args,
+      enabled: true,
+    }
+    saveMCPConfigs([...mcpConfigs, newConfig])
+    setNewMCPName('')
+    setNewMCPCommand('npx')
+    setNewMCPArgs('@modelcontextprotocol/server-sequential-thinking')
+    setShowAddMCP(false)
+  }
 
   return (
     <div className="fixed top-4 right-4 z-50" ref={menuRef}>
@@ -159,6 +210,92 @@ export function SettingsDropdown() {
                         </option>
                       ))}
                   </select>
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between">
+                  <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">MCP Servers</div>
+                  {!showAddMCP && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAddMCP(true)}
+                      className="text-xs font-ui text-primary-dark hover:text-primary"
+                    >
+                      + Add
+                    </button>
+                  )}
+                </div>
+                <div className="mt-2">
+                  {mcpConfigs.map((config) => (
+                    <div
+                      key={config.id}
+                      className="flex items-center justify-between rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm font-ui"
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={config.enabled}
+                          onChange={() => toggleMCP(config.id)}
+                          className="rounded border-surface-dark"
+                        />
+                        <span className="text-primary-dark">{config.name}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeMCP(config.id)}
+                        className="text-primary-dark/60 hover:text-primary-dark"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {showAddMCP && (
+                    <div className="mt-2 space-y-2 rounded-md border border-surface-dark bg-surface p-3">
+                      <input
+                        type="text"
+                        placeholder="Display name"
+                        value={newMCPName}
+                        onChange={(e) => setNewMCPName(e.target.value)}
+                        className="w-full rounded-md border border-surface-dark bg-surface px-2 py-1 text-xs font-ui text-primary-dark"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Command (e.g., npx)"
+                        value={newMCPCommand}
+                        onChange={(e) => setNewMCPCommand(e.target.value)}
+                        className="w-full rounded-md border border-surface-dark bg-surface px-2 py-1 text-xs font-ui text-primary-dark"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Args (comma-separated)"
+                        value={newMCPArgs}
+                        onChange={(e) => setNewMCPArgs(e.target.value)}
+                        className="w-full rounded-md border border-surface-dark bg-surface px-2 py-1 text-xs font-ui text-primary-dark"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={addMCP}
+                          className="flex-1 rounded-md bg-primary px-2 py-1 text-xs font-ui text-surface"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddMCP(false)
+                            setNewMCPName('')
+                            setNewMCPCommand('npx')
+                            setNewMCPArgs('@modelcontextprotocol/server-sequential-thinking')
+                          }}
+                          className="flex-1 rounded-md border border-surface-dark px-2 py-1 text-xs font-ui text-primary-dark"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

@@ -19,6 +19,7 @@ import {
   type LanguageCode,
   type RegionCode,
 } from "@/components/Settings";
+import { loadMCPConfigs } from "@/api/mcp-config";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -100,6 +101,17 @@ function RootLayout() {
     try {
       const saved = localStorage.getItem("parsnip-context");
       if (typeof saved === "string") setContext(saved);
+    } catch {}
+  }, []);
+
+  // Initialize default MCP config if not exists
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("parsnip-mcps");
+      if (!saved) {
+        const defaultConfigs = loadMCPConfigs();
+        localStorage.setItem("parsnip-mcps", JSON.stringify(defaultConfigs));
+      }
     } catch {}
   }, []);
 
