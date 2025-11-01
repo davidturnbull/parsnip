@@ -14,17 +14,27 @@ import { Temperature } from "@/components/Temperature";
 import { Weight } from "@/components/Weight";
 import { Volume } from "@/components/Volume";
 import { Length } from "@/components/Length";
-import { useSettings, getLanguageLabel, getRegionMeta } from "@/components/Settings";
+import {
+  useSettings,
+  getLanguageLabel,
+  getRegionMeta,
+} from "@/components/Settings";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { Paywall } from "@/components/PaywallOverlay";
 import { verifyPayment } from "@/api/stripe";
 import dedent from "dedent";
 
-
 const webSearch = tool({
-  description: "Search the web for up-to-date information about recipes, ingredients, cooking techniques, dietary requirements, substitutions, alternative ingredients, cooking methods, and other relevant culinary information. Use this tool to research recipe options and gather information before generating a recipe.",
+  description:
+    "Search the web for up-to-date information about recipes, ingredients, cooking techniques, dietary requirements, substitutions, alternative ingredients, cooking methods, and other relevant culinary information. Use this tool to research recipe options and gather information before generating a recipe.",
   inputSchema: z.object({
-    query: z.string().min(1).max(200).describe("The search query to find relevant recipe information, ingredient substitutions, cooking techniques, or dietary considerations"),
+    query: z
+      .string()
+      .min(1)
+      .max(200)
+      .describe(
+        "The search query to find relevant recipe information, ingredient substitutions, cooking techniques, or dietary considerations"
+      ),
   }),
   execute: async ({ query }) => {
     const firecrawl = new FirecrawlClient({
@@ -41,7 +51,12 @@ const webSearch = tool({
         },
       });
 
-      if (!searchResponse || !searchResponse.success || !searchResponse.data?.web || searchResponse.data.web.length === 0) {
+      if (
+        !searchResponse ||
+        !searchResponse.success ||
+        !searchResponse.data?.web ||
+        searchResponse.data.web.length === 0
+      ) {
         return {
           results: [],
           message: "No search results found",
@@ -52,7 +67,10 @@ const webSearch = tool({
         results: searchResponse.data.web.map((result: any) => ({
           title: result.title || result.metadata?.title || "Untitled",
           url: result.url || result.metadata?.sourceURL || "",
-          content: result.markdown?.slice(0, 1000) || result.description?.slice(0, 1000) || "",
+          content:
+            result.markdown?.slice(0, 1000) ||
+            result.description?.slice(0, 1000) ||
+            "",
           publishedDate: result.metadata?.publishedDate,
         })),
       };
@@ -172,7 +190,17 @@ const LOADING_MESSAGES = [
 ];
 
 const generateFromPrompt = createServerFn({ method: "POST" })
-  .inputValidator((d: { prompt: string; context?: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
+  .inputValidator(
+    (d: {
+      prompt: string;
+      context?: string;
+      language?: string;
+      region?: string;
+      languageLabel?: string;
+      regionLabel?: string;
+      regionFlag?: string;
+    }) => d
+  )
   .handler(async ({ data }) => {
     const userPrompt = (data?.prompt || "").trim();
     if (!userPrompt) {
@@ -189,12 +217,16 @@ const generateFromPrompt = createServerFn({ method: "POST" })
         ## Context
 
         Parsnip is an AI agent that writes and rewrite recipes.
-        ${data?.context ? `\n### **CRITICAL: User Requirements**
+        ${
+          data?.context
+            ? `\n### **CRITICAL: User Requirements**
 
 The following user-provided context MUST be strictly adhered to when generating the recipe:
 ${data.context}
 
-**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and incorporated into the recipe.` : ""}
+**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and incorporated into the recipe.`
+            : ""
+        }
 
         ## Important: Web Search Requirement
 
@@ -560,8 +592,8 @@ ${data.context}
 
         ---
 
-        Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
-        Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
+        Language: ${data?.languageLabel || data?.language || "English"} (${data?.language || "en"})
+        Region: ${data?.regionLabel || data?.region || "United States"} ${data?.regionFlag || "🇺🇸"}
         Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
 
         Now produce the recipe that follows all rules above.
@@ -574,7 +606,17 @@ ${data.context}
   });
 
 const processRecipe = createServerFn({ method: "POST" })
-  .inputValidator((d: { url: string; context?: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
+  .inputValidator(
+    (d: {
+      url: string;
+      context?: string;
+      language?: string;
+      region?: string;
+      languageLabel?: string;
+      regionLabel?: string;
+      regionFlag?: string;
+    }) => d
+  )
   .handler(async ({ data }) => {
     const url = data?.url;
     const context = (data?.context || "").trim();
@@ -610,12 +652,16 @@ const processRecipe = createServerFn({ method: "POST" })
         ## Context
 
         Parsnip is an AI agent that writes and rewrite recipes.
-        ${context ? `\n### **CRITICAL: User Requirements**
+        ${
+          context
+            ? `\n### **CRITICAL: User Requirements**
 
 The following user-provided context MUST be strictly adhered to when rewriting the recipe:
 ${context}
 
-**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and incorporated into the recipe.` : ""}
+**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and incorporated into the recipe.`
+            : ""
+        }
 
         ## Important: Web Search Requirement
 
@@ -984,8 +1030,8 @@ ${context}
 
         ---
 
-        Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
-        Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
+        Language: ${data?.languageLabel || data?.language || "English"} (${data?.language || "en"})
+        Region: ${data?.regionLabel || data?.region || "United States"} ${data?.regionFlag || "🇺🇸"}
         Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
 
         Rewrite the following source into a recipe that follows all rules above while keeping original quantities when reasonable.
@@ -1000,7 +1046,19 @@ ${context}
   });
 
 const dumbDownRecipe = createServerFn({ method: "POST" })
-  .inputValidator((d: { existingRecipe: string; originalPrompt?: string; originalUrl?: string; originalContext?: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
+  .inputValidator(
+    (d: {
+      existingRecipe: string;
+      originalPrompt?: string;
+      originalUrl?: string;
+      originalContext?: string;
+      language?: string;
+      region?: string;
+      languageLabel?: string;
+      regionLabel?: string;
+      regionFlag?: string;
+    }) => d
+  )
   .handler(async ({ data }) => {
     const existingRecipe = data?.existingRecipe || "";
     const originalPrompt = data?.originalPrompt || "";
@@ -1117,15 +1175,19 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
 
       ---
 
-      Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
-      Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
+      Language: ${data?.languageLabel || data?.language || "English"} (${data?.language || "en"})
+      Region: ${data?.regionLabel || data?.region || "United States"} ${data?.regionFlag || "🇺🇸"}
       Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
-      ${originalContext ? `\n### **CRITICAL: User Requirements**
+      ${
+        originalContext
+          ? `\n### **CRITICAL: User Requirements**
 
 The following user-provided context MUST be strictly adhered to when simplifying the recipe:
 ${originalContext}
 
-**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and maintained in the simplified version.` : ""}
+**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and maintained in the simplified version.`
+          : ""
+      }
 
       ## IMPORTANT: Simplify Further
 
@@ -1182,7 +1244,7 @@ function App() {
   const [inputPrompt, setInputPrompt] = useState(prompt);
   const [inputContext, setInputContext] = useState(context);
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(() =>
-    Math.floor(Math.random() * LOADING_MESSAGES.length),
+    Math.floor(Math.random() * LOADING_MESSAGES.length)
   );
   const [dumbingDown, setDumbingDown] = useState(false);
   const getCacheKey = (u: string, c?: string) =>
@@ -1191,8 +1253,10 @@ function App() {
   const { language, region, context: globalContext } = useSettings();
   const { hasPaid, markAsPaid, checkPaymentFromUrl } = usePaymentStatus();
   const combinedContext = useMemo(() => {
-    const parts = [globalContext, context].map((s) => (s || "").trim()).filter(Boolean)
-    return parts.join("\n")
+    const parts = [globalContext, context]
+      .map((s) => (s || "").trim())
+      .filter(Boolean);
+    return parts.join("\n");
   }, [globalContext, context]);
 
   useEffect(() => {
@@ -1243,9 +1307,21 @@ function App() {
       let accumulatedText = "";
       try {
         if (url) {
-          const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
+          const { label: regionLabel, flag: regionFlag } = getRegionMeta(
+            region as any
+          );
           const languageLabel = getLanguageLabel(language as any);
-          const response = await processRecipe({ data: { url, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
+          const response = await processRecipe({
+            data: {
+              url,
+              context: combinedContext,
+              language,
+              region,
+              languageLabel,
+              regionLabel,
+              regionFlag,
+            },
+          });
           if (!response.body) {
             throw new Error("No response body");
           }
@@ -1269,14 +1345,26 @@ function App() {
             try {
               localStorage.setItem(
                 getCacheKey(url, combinedContext),
-                JSON.stringify({ mdx: finalText, ts: Date.now() }),
+                JSON.stringify({ mdx: finalText, ts: Date.now() })
               );
             } catch {}
           }
         } else if (prompt) {
-          const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
+          const { label: regionLabel, flag: regionFlag } = getRegionMeta(
+            region as any
+          );
           const languageLabel = getLanguageLabel(language as any);
-          const response = await generateFromPrompt({ data: { prompt, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
+          const response = await generateFromPrompt({
+            data: {
+              prompt,
+              context: combinedContext,
+              language,
+              region,
+              languageLabel,
+              regionLabel,
+              regionFlag,
+            },
+          });
           if (!response.body) {
             throw new Error("No response body");
           }
@@ -1317,14 +1405,16 @@ function App() {
     setLoadingMsgIndex((prev) => {
       if (LOADING_MESSAGES.length < 2) return prev;
       let next = prev;
-      while (next === prev) next = Math.floor(Math.random() * LOADING_MESSAGES.length);
+      while (next === prev)
+        next = Math.floor(Math.random() * LOADING_MESSAGES.length);
       return next;
     });
     const id = setInterval(() => {
       setLoadingMsgIndex((prev) => {
         if (LOADING_MESSAGES.length < 2) return prev;
         let next = prev;
-        while (next === prev) next = Math.floor(Math.random() * LOADING_MESSAGES.length);
+        while (next === prev)
+          next = Math.floor(Math.random() * LOADING_MESSAGES.length);
         return next;
       });
     }, 3000);
@@ -1333,10 +1423,10 @@ function App() {
 
   const components = useMemo(() => {
     const A = (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
-      const href = props.href || '';
+      const href = props.href || "";
       const isExternal = /^https?:\/\//i.test(href);
-      const target = isExternal ? '_blank' : props.target;
-      const rel = isExternal ? 'noopener noreferrer' : props.rel;
+      const target = isExternal ? "_blank" : props.target;
+      const rel = isExternal ? "noopener noreferrer" : props.rel;
       return <a {...props} target={target} rel={rel} />;
     };
     return { Temperature, Weight, Volume, Length, a: A } as Record<string, any>;
@@ -1347,7 +1437,11 @@ function App() {
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="w-full flex items-center justify-center mb-6">
           <a href="/" aria-label="Parsnip home" className="flex items-center">
-            <img src="/logo.png" alt="Parsnip logo" className="block h-16 w-16" />
+            <img
+              src="/logo.png"
+              alt="Parsnip logo"
+              className="block h-16 w-16"
+            />
             <span className="ml-3 text-3xl lowercase font-ui font-ui-heading text-primary-dark">
               parsnip
             </span>
@@ -1364,12 +1458,17 @@ function App() {
                   Tell the AI what you have or want (e.g. "I have chicken, rice,
                   broccoli"). It will invent a simple recipe.
                 </p>
-                <form method="GET" action="/" className="flex gap-2" onSubmit={(e) => {
-                  const canGenerate = inputPrompt.trim().length > 0;
-                  if (!canGenerate) {
-                    e.preventDefault();
-                  }
-                }}>
+                <form
+                  method="GET"
+                  action="/"
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    const canGenerate = inputPrompt.trim().length > 0;
+                    if (!canGenerate) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
                   <input
                     className="flex-1 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
                     placeholder="I have eggs, spinach, and feta..."
@@ -1408,12 +1507,17 @@ function App() {
                 <p className="text-sm mb-3 text-primary-dark/70">
                   Paste a recipe URL to simplify it for beginners.
                 </p>
-                <form method="GET" action="/" className="flex flex-col gap-3" onSubmit={(e) => {
-                  const canImport = inputUrl.trim().length > 0;
-                  if (!canImport) {
-                    e.preventDefault();
-                  }
-                }}>
+                <form
+                  method="GET"
+                  action="/"
+                  className="flex flex-col gap-3"
+                  onSubmit={(e) => {
+                    const canImport = inputUrl.trim().length > 0;
+                    if (!canImport) {
+                      e.preventDefault();
+                    }
+                  }}
+                >
                   <div className="flex gap-2">
                     <input
                       className="flex-1 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
@@ -1446,7 +1550,10 @@ function App() {
                     })()}
                   </div>
                   <div>
-                    <label className="block text-sm mb-1 text-primary-dark font-ui" htmlFor="import-context">
+                    <label
+                      className="block text-sm mb-1 text-primary-dark font-ui"
+                      htmlFor="import-context"
+                    >
                       Additional context (optional)
                     </label>
                     {hasPaid ? (
@@ -1510,11 +1617,10 @@ function App() {
                     onClick={async () => {
                       setDumbingDown(true);
                       setError(null);
-                      setLoading(true);
-                      setHasValidMdx(false);
                       let accumulatedText = "";
                       try {
-                        const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
+                        const { label: regionLabel, flag: regionFlag } =
+                          getRegionMeta(region as any);
                         const languageLabel = getLanguageLabel(language as any);
                         const response = await dumbDownRecipe({
                           data: {
@@ -1546,7 +1652,7 @@ function App() {
                           try {
                             localStorage.setItem(
                               getCacheKey(url, combinedContext),
-                              JSON.stringify({ mdx: finalText, ts: Date.now() }),
+                              JSON.stringify({ mdx: finalText, ts: Date.now() })
                             );
                           } catch {}
                         }
@@ -1554,9 +1660,6 @@ function App() {
                         setError(err?.message || "Something went wrong");
                       } finally {
                         setDumbingDown(false);
-                        if (!hasValidMdx) {
-                          setLoading(false);
-                        }
                       }
                     }}
                     disabled={dumbingDown}
@@ -1570,10 +1673,14 @@ function App() {
                   </button>
                 </div>
                 <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
-                  <MdxRenderer source={mdx} components={components} onFirstValidCompilation={() => {
-                    setHasValidMdx(true);
-                    setLoading(false);
-                  }} />
+                  <MdxRenderer
+                    source={mdx}
+                    components={components}
+                    onFirstValidCompilation={() => {
+                      setHasValidMdx(true);
+                      setLoading(false);
+                    }}
+                  />
                 </article>
               </>
             )}
