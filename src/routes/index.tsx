@@ -19,6 +19,20 @@ type Result = {
   mdx: string;
 };
 
+// Fun messages shown while recipes are loading
+const LOADING_MESSAGES = [
+  "Gathering ingredients from the internet pantry…",
+  "Asking the garlic to play nice…",
+  "Counting grains of rice (not all of them)…",
+  "Negotiating with stubborn noodles…",
+  "Teaching onions to cry on cue…",
+  "Convincing the pan to behave…",
+  "Drawing tiny hats on mushrooms…",
+  "Telling the oven a hot secret…",
+  "Politely measuring a pinch of chaos…",
+  "Checking if the spoon is left‑ or right‑handed…",
+];
+
 const generateFromPrompt = createServerFn({ method: "POST" })
   .inputValidator((d: { prompt: string; context?: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
   .handler(async ({ data }) => {
@@ -830,6 +844,9 @@ function App() {
   const [inputUrl, setInputUrl] = useState(url);
   const [inputPrompt, setInputPrompt] = useState(prompt);
   const [inputContext, setInputContext] = useState(context);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(() =>
+    Math.floor(Math.random() * LOADING_MESSAGES.length),
+  );
   const getCacheKey = (u: string, c?: string) =>
     `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
   // Unit providers and settings are now handled globally in the root layout
@@ -895,6 +912,27 @@ function App() {
       cancelled = true;
     };
   }, [url, prompt, context, language, region, globalContext, combinedContext]);
+
+  // Rotate whimsical loading messages while loading
+  useEffect(() => {
+    if (!loading) return;
+    // Immediately pick a new message when loading starts
+    setLoadingMsgIndex((prev) => {
+      if (LOADING_MESSAGES.length < 2) return prev;
+      let next = prev;
+      while (next === prev) next = Math.floor(Math.random() * LOADING_MESSAGES.length);
+      return next;
+    });
+    const id = setInterval(() => {
+      setLoadingMsgIndex((prev) => {
+        if (LOADING_MESSAGES.length < 2) return prev;
+        let next = prev;
+        while (next === prev) next = Math.floor(Math.random() * LOADING_MESSAGES.length);
+        return next;
+      });
+    }, 3000);
+    return () => clearInterval(id);
+  }, [loading]);
 
   const components = useMemo(() => {
     return { Temperature, Weight, Volume, Length } as Record<string, any>;
@@ -1022,8 +1060,12 @@ function App() {
         {(url || prompt) && (
           <>
             {loading && (
-              <div className="animate-pulse rounded-md border border-surface-dark bg-surface/60 p-6 font-ui">
-                Loading recipe and rewriting for beginners...
+              <div
+                className="animate-pulse rounded-md border border-surface-dark bg-surface/60 p-6 font-ui"
+                role="status"
+                aria-live="polite"
+              >
+                {LOADING_MESSAGES[loadingMsgIndex]}
               </div>
             )}
 
