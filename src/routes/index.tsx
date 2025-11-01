@@ -8,10 +8,10 @@ import * as mdxDevRuntime from "react/jsx-dev-runtime";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { FirecrawlClient } from "@mendable/firecrawl-js";
-import { TemperatureProvider, Temperature } from "@/components/Temperature";
-import { WeightProvider, Weight } from "@/components/Weight";
-import { VolumeProvider, Volume } from "@/components/Volume";
-import { LengthProvider, Length } from "@/components/Length";
+import { Temperature } from "@/components/Temperature";
+import { Weight } from "@/components/Weight";
+import { Volume } from "@/components/Volume";
+import { Length } from "@/components/Length";
 import dedent from "dedent";
 
 type Result = {
@@ -134,32 +134,20 @@ export const Route = createFileRoute("/")({
 });
 
 function App() {
-  const { url, prompt, context } = Route.useSearch() as { url: string; prompt: string; context: string };
+  const { url, prompt, context } = Route.useSearch() as {
+    url: string;
+    prompt: string;
+    context: string;
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mdx, setMdx] = useState<string>("");
   const [inputUrl, setInputUrl] = useState(url);
   const [inputPrompt, setInputPrompt] = useState(prompt);
   const [inputContext, setInputContext] = useState(context);
-  const getCacheKey = (u: string, c?: string) => `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
-  const [system, setSystem] = useState<"metric" | "imperial">("metric");
-
-  // Load saved unit preference
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("parsnip-units");
-      if (saved === "metric" || saved === "imperial") setSystem(saved);
-    } catch {}
-  }, []);
-
-  // Persist unit preference
-  useEffect(() => {
-    try {
-      localStorage.setItem("parsnip-units", system);
-    } catch {}
-  }, [system]);
-
-  const tempUnit = system === "imperial" ? "fahrenheit" : "celsius" as const;
+  const getCacheKey = (u: string, c?: string) =>
+    `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
+  // Unit providers and settings are now handled globally in the root layout
 
   useEffect(() => {
     let cancelled = false;
@@ -222,20 +210,21 @@ function App() {
     <div className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="w-full flex items-center justify-center mb-6">
-          <img
-            src="/logo.png"
-            alt="Parsnip logo"
-            className="block h-16 w-16"
-          />
-          <span className="ml-3 text-3xl lowercase font-ui font-ui-heading text-primary-dark">parsnip</span>
+          <img src="/logo.png" alt="Parsnip logo" className="block h-16 w-16" />
+          <span className="ml-3 text-3xl lowercase font-ui font-ui-heading text-primary-dark">
+            parsnip
+          </span>
         </div>
         {!url && !prompt && (
           <>
             <div className="grid gap-6">
               <section className="rounded-xl border border-surface-dark bg-surface p-5 shadow-sm">
-                <h2 className="text-lg font-semibold mb-2 text-primary font-ui font-ui-heading">Generate</h2>
+                <h2 className="text-lg font-semibold mb-2 text-primary font-ui font-ui-heading">
+                  Generate
+                </h2>
                 <p className="text-sm mb-3 text-primary-dark/70">
-                  Tell the AI what you have or want (e.g. "I have chicken, rice, broccoli"). It will invent a simple recipe.
+                  Tell the AI what you have or want (e.g. "I have chicken, rice,
+                  broccoli"). It will invent a simple recipe.
                 </p>
                 <div className="flex gap-2">
                   <input
@@ -271,7 +260,9 @@ function App() {
               </section>
 
               <section className="rounded-xl border border-surface-dark bg-surface p-5 shadow-sm">
-                <h2 className="text-lg font-semibold mb-2 text-primary font-ui font-ui-heading">Import</h2>
+                <h2 className="text-lg font-semibold mb-2 text-primary font-ui font-ui-heading">
+                  Import
+                </h2>
                 <p className="text-sm mb-3 text-primary-dark/70">
                   Paste a recipe URL to simplify it for beginners.
                 </p>
@@ -287,7 +278,9 @@ function App() {
                       const canImport = inputUrl.trim().length > 0;
                       const href = canImport
                         ? `/?url=${encodeURIComponent(inputUrl)}${
-                            inputContext ? `&context=${encodeURIComponent(inputContext)}` : ""
+                            inputContext
+                              ? `&context=${encodeURIComponent(inputContext)}`
+                              : ""
                           }`
                         : "#";
                       return (
@@ -310,7 +303,9 @@ function App() {
                     })()}
                   </div>
                   <div>
-                    <label className="block text-sm mb-1 text-primary-dark font-ui">Additional context (optional)</label>
+                    <label className="block text-sm mb-1 text-primary-dark font-ui">
+                      Additional context (optional)
+                    </label>
                     <textarea
                       className="w-full min-h-20 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
                       placeholder="Dietary requirements, substitutions, spice tolerance, allergies, tools available, etc."
@@ -320,7 +315,10 @@ function App() {
                   </div>
                 </div>
                 <div className="text-xs mt-2 text-primary-dark/60">
-                  Example: <code>/?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/</code>
+                  Example:{" "}
+                  <code>
+                    /?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/
+                  </code>
                 </div>
               </section>
             </div>
@@ -328,58 +326,25 @@ function App() {
         )}
 
         {(url || prompt) && (
-          <TemperatureProvider unit={tempUnit}>
-            <WeightProvider unit={system}>
-              <VolumeProvider unit={system}>
-                <LengthProvider unit={system}>
-                  <div className="flex justify-end mb-4">
-                    <div className="inline-flex rounded-md border border-surface-dark bg-surface p-1">
-                      <button
-                        onClick={() => setSystem("metric")}
-                        className={`px-3 py-1 text-sm rounded font-ui ${
-                          system === "metric"
-                            ? "bg-primary text-surface"
-                            : "text-primary-dark hover:bg-parsnip-leaf-light hover:text-primary-dark"
-                        }`}
-                        aria-pressed={system === "metric"}
-                      >
-                        Metric (°C)
-                      </button>
-                      <button
-                        onClick={() => setSystem("imperial")}
-                        className={`px-3 py-1 text-sm rounded font-ui ${
-                          system === "imperial"
-                            ? "bg-primary text-surface"
-                            : "text-primary-dark hover:bg-parsnip-leaf-light hover:text-primary-dark"
-                        }`}
-                        aria-pressed={system === "imperial"}
-                      >
-                        Imperial (°F)
-                      </button>
-                    </div>
-                  </div>
+          <>
+            {loading && (
+              <div className="animate-pulse rounded-md border border-surface-dark bg-surface/60 p-6 font-ui">
+                Loading recipe and rewriting for beginners...
+              </div>
+            )}
 
-                  {loading && (
-                    <div className="animate-pulse rounded-md border border-surface-dark bg-surface/60 p-6 font-ui">
-                       Loading recipe and rewriting for beginners...
-                    </div>
-                  )}
+            {error && (
+              <div className="rounded-md border border-red-700 bg-red-50 p-4 text-red-800">
+                {error}
+              </div>
+            )}
 
-                  {error && (
-                    <div className="rounded-md border border-red-700 bg-red-50 p-4 text-red-800">
-                      {error}
-                    </div>
-                  )}
-
-                  {!loading && !error && mdx && (
-                    <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
-                      <MdxRenderer source={mdx} components={components} />
-                    </article>
-                  )}
-                </LengthProvider>
-              </VolumeProvider>
-            </WeightProvider>
-          </TemperatureProvider>
+            {!loading && !error && mdx && (
+              <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
+                <MdxRenderer source={mdx} components={components} />
+              </article>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -418,7 +383,8 @@ function MdxRenderer({
     };
   }, [source, components]);
 
-  if (!Comp) return <div className="text-primary-dark/70 font-ui">Rendering…</div>;
+  if (!Comp)
+    return <div className="text-primary-dark/70 font-ui">Rendering…</div>;
   return (
     <MDXProvider components={components}>
       <Comp />
