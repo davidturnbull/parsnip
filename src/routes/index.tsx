@@ -12,6 +12,7 @@ import { Temperature } from "@/components/Temperature";
 import { Weight } from "@/components/Weight";
 import { Volume } from "@/components/Volume";
 import { Length } from "@/components/Length";
+import { useSettings, getLanguageLabel, getRegionMeta } from "@/components/Settings";
 import dedent from "dedent";
 
 type Result = {
@@ -19,7 +20,7 @@ type Result = {
 };
 
 const generateFromPrompt = createServerFn({ method: "POST" })
-  .inputValidator((d: { prompt: string }) => d)
+  .inputValidator((d: { prompt: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
   .handler(async ({ data }) => {
     const userPrompt = (data?.prompt || "").trim();
     if (!userPrompt) {
@@ -35,6 +36,10 @@ const generateFromPrompt = createServerFn({ method: "POST" })
         - An ingredients list
         - Numbered steps
         - Optional tips
+
+        Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
+        Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
+        Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
 
         Output MDX only. Do NOT include import statements.
         You can use these globally available MDX components without importing:
@@ -60,7 +65,7 @@ const generateFromPrompt = createServerFn({ method: "POST" })
   });
 
 const processRecipe = createServerFn({ method: "POST" })
-  .inputValidator((d: { url: string; context?: string }) => d)
+  .inputValidator((d: { url: string; context?: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
   .handler(async ({ data }) => {
     const url = data?.url;
     const context = (data?.context || "").trim();
@@ -97,6 +102,10 @@ const processRecipe = createServerFn({ method: "POST" })
         - Optional tips
 
         ${context ? `Consider these preferences and adapt the recipe: ${context}` : ""}
+
+        Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
+        Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
+        Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
 
         Output MDX only. Do NOT include import statements.
         You can use these globally available MDX components without importing:
@@ -148,6 +157,7 @@ function App() {
   const getCacheKey = (u: string, c?: string) =>
     `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
   // Unit providers and settings are now handled globally in the root layout
+  const { language, region } = useSettings();
 
   useEffect(() => {
     let cancelled = false;
@@ -176,7 +186,9 @@ function App() {
       setMdx("");
       try {
         if (url) {
-          const res = await processRecipe({ data: { url, context } });
+          const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
+          const languageLabel = getLanguageLabel(language as any);
+          const res = await processRecipe({ data: { url, context, language, region, languageLabel, regionLabel, regionFlag } });
           if (!cancelled) {
             setMdx(res.mdx);
             try {
@@ -187,7 +199,9 @@ function App() {
             } catch {}
           }
         } else if (prompt) {
-          const res = await generateFromPrompt({ data: { prompt } });
+          const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
+          const languageLabel = getLanguageLabel(language as any);
+          const res = await generateFromPrompt({ data: { prompt, language, region, languageLabel, regionLabel, regionFlag } });
           if (!cancelled) setMdx(res.mdx);
         }
       } catch (err: any) {

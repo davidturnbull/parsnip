@@ -7,6 +7,7 @@ import { WeightProvider } from '@/components/Weight'
 import { VolumeProvider } from '@/components/Volume'
 import { LengthProvider } from '@/components/Length'
 import { SettingsDropdown } from '@/components/SettingsDropdown'
+import { LANGUAGES, REGIONS, SettingsProvider, type LanguageCode, type RegionCode } from '@/components/Settings'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -54,12 +55,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
 function RootLayout() {
   const [system, setSystem] = useState<'metric' | 'imperial'>('metric')
+  const [language, setLanguage] = useState<LanguageCode>('en')
+  const [region, setRegion] = useState<RegionCode>('US')
 
   // Load saved unit preference
   useEffect(() => {
     try {
       const saved = localStorage.getItem('parsnip-units')
       if (saved === 'metric' || saved === 'imperial') setSystem(saved)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('parsnip-language')
+      const codes = new Set(LANGUAGES.map((l) => l.code))
+      if (saved && codes.has(saved as LanguageCode)) setLanguage(saved as LanguageCode)
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('parsnip-region')
+      const codes = new Set(REGIONS.map((r) => r.code))
+      if (saved && codes.has(saved as RegionCode)) setRegion(saved as RegionCode)
     } catch {}
   }, [])
 
@@ -70,23 +89,46 @@ function RootLayout() {
     } catch {}
   }, [system])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('parsnip-language', language)
+    } catch {}
+  }, [language])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('parsnip-region', region)
+    } catch {}
+  }, [region])
+
   const tempUnit = useMemo(
     () => (system === 'imperial' ? ('fahrenheit' as const) : ('celsius' as const)),
     [system],
   )
 
   return (
-    <TemperatureProvider unit={tempUnit}>
-      <WeightProvider unit={system}>
-        <VolumeProvider unit={system}>
-          <LengthProvider unit={system}>
-            <div className="min-h-screen">
-              <SettingsDropdown system={system} setSystem={setSystem} />
-              <Outlet />
-            </div>
-          </LengthProvider>
-        </VolumeProvider>
-      </WeightProvider>
-    </TemperatureProvider>
+    <SettingsProvider
+      value={{
+        system,
+        setSystem,
+        language,
+        setLanguage,
+        region,
+        setRegion,
+      }}
+    >
+      <TemperatureProvider unit={tempUnit}>
+        <WeightProvider unit={system}>
+          <VolumeProvider unit={system}>
+            <LengthProvider unit={system}>
+              <div className="min-h-screen">
+                <SettingsDropdown />
+                <Outlet />
+              </div>
+            </LengthProvider>
+          </VolumeProvider>
+        </WeightProvider>
+      </TemperatureProvider>
+    </SettingsProvider>
   )
 }

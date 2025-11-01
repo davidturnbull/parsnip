@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import { LANGUAGES, REGIONS, type LanguageCode, type RegionCode, useSettings } from '@/components/Settings'
 
-export function SettingsDropdown({
-  system,
-  setSystem,
-}: {
-  system: 'metric' | 'imperial'
-  setSystem: (s: 'metric' | 'imperial') => void
-}) {
+export function SettingsDropdown() {
+  const { system, setSystem, language, setLanguage, region, setRegion } = useSettings()
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -67,9 +63,10 @@ export function SettingsDropdown({
               </button>
             </div>
 
-            <div className="mt-3">
-              <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">Units</div>
-              <div className="mt-2">
+            <div className="mt-3 grid gap-6">
+              <section>
+                <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">Units</div>
+                <div className="mt-2">
                 <button
                   role="radio"
                   aria-checked={system === 'metric'}
@@ -101,7 +98,46 @@ export function SettingsDropdown({
                     <span className="opacity-40" aria-hidden="true">◯</span>
                   )}
                 </button>
-              </div>
+                </div>
+              </section>
+
+              <section>
+                <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">Language</div>
+                <div className="mt-2">
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+                    className="w-full rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm font-ui text-primary-dark hover:bg-parsnip-peach-light"
+                  >
+                    {[...LANGUAGES]
+                      .sort((a, b) => a.label.localeCompare(b.label))
+                      .map((l) => (
+                        <option key={l.code} value={l.code}>
+                          {l.label} ({l.code})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </section>
+
+              <section>
+                <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">Region</div>
+                <div className="mt-2">
+                  <select
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value as RegionCode)}
+                    className="w-full rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm font-ui text-primary-dark hover:bg-parsnip-peach-light"
+                  >
+                    {[...REGIONS]
+                      .sort((a, b) => a.label.localeCompare(b.label))
+                      .map((r) => (
+                        <option key={r.code} value={r.code}>
+                          {r.flag} {r.label} ({r.code})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </section>
             </div>
 
             <div className="mt-4 flex justify-end">
