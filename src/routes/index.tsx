@@ -8,6 +8,10 @@ import * as mdxDevRuntime from "react/jsx-dev-runtime";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { FirecrawlClient } from "@mendable/firecrawl-js";
+import { TemperatureProvider, Temperature } from "@/components/Temperature";
+import { WeightProvider, Weight } from "@/components/Weight";
+import { VolumeProvider, Volume } from "@/components/Volume";
+import { LengthProvider, Length } from "@/components/Length";
 
 type Result = {
   mdx: string;
@@ -41,10 +45,33 @@ const processRecipe = createServerFn({ method: "POST" })
     // Rewrite using Vercel AI SDK (OpenAI)
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
-      prompt:
-        "Rewrite this recipe for an absolute beginner. Use a simple title, a clear ingredients list, and numbered steps. Keep jargon minimal. Output in Markdown/MDX only.\n\n--- PAGE CONTENT START ---\n" +
-        pageMarkdown +
-        "\n--- PAGE CONTENT END ---",
+      prompt: [
+        "Rewrite this recipe for an absolute beginner.",
+        "Keep it short and friendly. Use:",
+        "- A simple title",
+        "- An ingredients list",
+        "- Numbered steps",
+        "- Optional tips",
+        "",
+        "Output MDX only. Do NOT include import statements.",
+        "You can use these globally available MDX components without importing:",
+        "- <Temperature value={numberInCelsius} />",
+        "- <Weight value={grams} />",
+        "- <Volume value={milliliters} />",
+        "- <Length value={centimeters} />",
+        "",
+        "Usage examples (copy exact tag names; no imports):",
+        "- Preheat oven: Preheat to <Temperature value={180} />.",
+        "- Ingredient weight: <Weight value={500} /> flour",
+        "- Liquid: <Volume value={250} /> milk",
+        "- Pan size: Use a <Length value={20} /> round pan",
+        "",
+        "When possible, keep original quantities from the page.",
+        "",
+        "--- PAGE CONTENT START ---",
+        pageMarkdown,
+        "--- PAGE CONTENT END ---",
+      ].join("\n"),
       temperature: 0.3,
     });
 
@@ -114,9 +141,7 @@ function App() {
   }, [url]);
 
   const components = useMemo(() => {
-    // Placeholder for custom MDX components you can add later
-    // Example: { h1: (props) => <h1 className="text-2xl" {...props} /> }
-    return {} as Record<string, any>;
+    return { Temperature, Weight, Volume, Length } as Record<string, any>;
   }, []);
 
   return (
@@ -209,8 +234,16 @@ function MdxRenderer({
 
   if (!Comp) return <div className="text-slate-400">Rendering…</div>;
   return (
-    <MDXProvider components={components}>
-      <Comp />
-    </MDXProvider>
+    <TemperatureProvider>
+      <WeightProvider>
+        <VolumeProvider>
+          <LengthProvider>
+            <MDXProvider components={components}>
+              <Comp />
+            </MDXProvider>
+          </LengthProvider>
+        </VolumeProvider>
+      </WeightProvider>
+    </TemperatureProvider>
   );
 }
