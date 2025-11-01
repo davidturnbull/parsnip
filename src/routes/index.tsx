@@ -93,6 +93,24 @@ function App() {
   const [mdx, setMdx] = useState<string>("");
   const [inputUrl, setInputUrl] = useState(url);
   const getCacheKey = (u: string) => `parsnip-cache::${encodeURIComponent(u)}`;
+  const [system, setSystem] = useState<"metric" | "imperial">("metric");
+
+  // Load saved unit preference
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("parsnip-units");
+      if (saved === "metric" || saved === "imperial") setSystem(saved);
+    } catch {}
+  }, []);
+
+  // Persist unit preference
+  useEffect(() => {
+    try {
+      localStorage.setItem("parsnip-units", system);
+    } catch {}
+  }, [system]);
+
+  const tempUnit = system === "imperial" ? "fahrenheit" : "celsius" as const;
 
   useEffect(() => {
     let cancelled = false;
@@ -166,34 +184,65 @@ function App() {
                 Go
               </a>
             </div>
+            <div className="text-slate-400 text-sm">
+              Tip: open something like <code>/?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/</code>
+            </div>
           </>
         )}
 
-        {loading && (
-          <div className="animate-pulse rounded-md border border-slate-800 bg-slate-800/50 p-6">
-            Loading recipe and rewriting for beginners...
-          </div>
-        )}
+        {url && (
+          <TemperatureProvider unit={tempUnit}>
+            <WeightProvider unit={system}>
+              <VolumeProvider unit={system}>
+                <LengthProvider unit={system}>
+                  <div className="flex justify-end mb-4">
+                    <div className="inline-flex rounded-md bg-slate-800 p-1">
+                      <button
+                        onClick={() => setSystem("metric")}
+                        className={`px-3 py-1 text-sm rounded ${
+                          system === "metric"
+                            ? "bg-cyan-600 text-white"
+                            : "text-slate-300 hover:text-white"
+                        }`}
+                        aria-pressed={system === "metric"}
+                      >
+                        Metric (°C)
+                      </button>
+                      <button
+                        onClick={() => setSystem("imperial")}
+                        className={`px-3 py-1 text-sm rounded ${
+                          system === "imperial"
+                            ? "bg-cyan-600 text-white"
+                            : "text-slate-300 hover:text-white"
+                        }`}
+                        aria-pressed={system === "imperial"}
+                      >
+                        Imperial (°F)
+                      </button>
+                    </div>
+                  </div>
 
-        {error && (
-          <div className="rounded-md border border-red-800 bg-red-900/20 p-4 text-red-300">
-            {error}
-          </div>
-        )}
+                  {loading && (
+                    <div className="animate-pulse rounded-md border border-slate-800 bg-slate-800/50 p-6">
+                      Loading recipe and rewriting for beginners...
+                    </div>
+                  )}
 
-        {!loading && !error && mdx && (
-          <article className="prose prose-invert max-w-none">
-            <MdxRenderer source={mdx} components={components} />
-          </article>
-        )}
+                  {error && (
+                    <div className="rounded-md border border-red-800 bg-red-900/20 p-4 text-red-300">
+                      {error}
+                    </div>
+                  )}
 
-        {!loading && !error && !mdx && !url && (
-          <div className="text-slate-400 text-sm">
-            Tip: open something like{" "}
-            <code>
-              /?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/
-            </code>
-          </div>
+                  {!loading && !error && mdx && (
+                    <article className="prose prose-invert max-w-none">
+                      <MdxRenderer source={mdx} components={components} />
+                    </article>
+                  )}
+                </LengthProvider>
+              </VolumeProvider>
+            </WeightProvider>
+          </TemperatureProvider>
         )}
       </div>
     </div>
@@ -234,16 +283,8 @@ function MdxRenderer({
 
   if (!Comp) return <div className="text-slate-400">Rendering…</div>;
   return (
-    <TemperatureProvider>
-      <WeightProvider>
-        <VolumeProvider>
-          <LengthProvider>
-            <MDXProvider components={components}>
-              <Comp />
-            </MDXProvider>
-          </LengthProvider>
-        </VolumeProvider>
-      </WeightProvider>
-    </TemperatureProvider>
+    <MDXProvider components={components}>
+      <Comp />
+    </MDXProvider>
   );
 }
