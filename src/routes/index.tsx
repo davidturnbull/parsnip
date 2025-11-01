@@ -59,9 +59,10 @@ const generateFromPrompt = createServerFn({ method: "POST" })
   });
 
 const processRecipe = createServerFn({ method: "POST" })
-  .inputValidator((d: { url: string }) => d)
+  .inputValidator((d: { url: string; context?: string }) => d)
   .handler(async ({ data }) => {
     const url = data?.url;
+    const context = (data?.context || "").trim();
     if (!url) {
       throw new Error("Missing url");
     }
@@ -94,6 +95,7 @@ const processRecipe = createServerFn({ method: "POST" })
         "- Numbered steps",
         "- Optional tips",
         "",
+        context ? `Consider these preferences and adapt the recipe: ${context}` : "",
         "Output MDX only. Do NOT include import statements.",
         "You can use these globally available MDX components without importing:",
         "- <Temperature value={numberInCelsius} />",
@@ -125,17 +127,19 @@ export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => ({
     url: (search.url as string) || "",
     prompt: (search.prompt as string) || "",
+    context: (search.context as string) || "",
   }),
 });
 
 function App() {
-  const { url, prompt } = Route.useSearch() as { url: string; prompt: string };
+  const { url, prompt, context } = Route.useSearch() as { url: string; prompt: string; context: string };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mdx, setMdx] = useState<string>("");
   const [inputUrl, setInputUrl] = useState(url);
   const [inputPrompt, setInputPrompt] = useState(prompt);
-  const getCacheKey = (u: string) => `parsnip-cache::${encodeURIComponent(u)}`;
+  const [inputContext, setInputContext] = useState(context);
+  const getCacheKey = (u: string, c?: string) => `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
   const [system, setSystem] = useState<"metric" | "imperial">("metric");
 
   // Load saved unit preference
@@ -162,7 +166,7 @@ function App() {
       // Try cache first to avoid redundant requests on reload
       if (url) {
         try {
-          const raw = localStorage.getItem(getCacheKey(url));
+          const raw = localStorage.getItem(getCacheKey(url, context));
           if (raw) {
             const cached = JSON.parse(raw) as { mdx?: string };
             if (cached?.mdx) {
@@ -182,12 +186,12 @@ function App() {
       setMdx("");
       try {
         if (url) {
-          const res = await processRecipe({ data: { url } });
+          const res = await processRecipe({ data: { url, context } });
           if (!cancelled) {
             setMdx(res.mdx);
             try {
               localStorage.setItem(
-                getCacheKey(url),
+                getCacheKey(url, context),
                 JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
               );
             } catch {}
@@ -206,7 +210,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [url, prompt]);
+  }, [url, prompt, context]);
 
   const components = useMemo(() => {
     return { Temperature, Weight, Volume, Length } as Record<string, any>;
@@ -244,19 +248,30 @@ function App() {
                 <p className="text-slate-400 text-sm mb-3">
                   Paste a recipe URL to simplify it for beginners.
                 </p>
-                <div className="flex gap-2">
-                  <input
-                    className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    placeholder="https://example.com/your-recipe"
-                    value={inputUrl}
-                    onChange={(e) => setInputUrl(e.target.value)}
-                  />
-                  <a
-                    href={`/?url=${encodeURIComponent(inputUrl || "")}`}
-                    className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
-                  >
-                    Import
-                  </a>
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      placeholder="https://example.com/your-recipe"
+                      value={inputUrl}
+                      onChange={(e) => setInputUrl(e.target.value)}
+                    />
+                    <a
+                      href={`/?url=${encodeURIComponent(inputUrl || "")}${inputContext ? `&context=${encodeURIComponent(inputContext)}` : ""}`}
+                      className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
+                    >
+                      Import
+                    </a>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 text-sm mb-1">Additional context (optional)</label>
+                    <textarea
+                      className="w-full min-h-20 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      placeholder="Dietary requirements, substitutions, spice tolerance, allergies, tools available, etc."
+                      value={inputContext}
+                      onChange={(e) => setInputContext(e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="text-slate-500 text-xs mt-2">
                   Example: <code>/?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/</code>
