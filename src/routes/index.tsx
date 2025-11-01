@@ -22,6 +22,7 @@ import {
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { Paywall } from "@/components/PaywallOverlay";
 import { verifyPayment } from "@/api/stripe";
+import { getAllMCPTools } from "@/api/mcp";
 import dedent from "dedent";
 // Lucky generation: AI chooses a random recipe respecting global context
 
@@ -208,10 +209,13 @@ const generateFromPrompt = createServerFn({ method: "POST" })
       throw new Error("Missing prompt");
     }
 
+    const mcpTools = await getAllMCPTools();
+
     const result = await streamText({
       model: openai("gpt-4o-mini"),
       tools: {
         webSearch,
+        ...mcpTools,
       },
       stopWhen: stepCountIs(5),
       prompt: dedent`\
@@ -239,6 +243,20 @@ ${data.context}
         - Search for any specific requirements, allergies, or dietary restrictions mentioned
         
         Only after gathering information from web searches should you generate the final recipe. This ensures the recipe is informed by current culinary knowledge and best practices.
+
+        ## Important: Using Sequential Thinking Tools
+
+        When analyzing complex recipe requirements or making critical decisions about cooking methods, use the Sequential Thinking tools available to you. These tools help you:
+        
+        - Break down complex multi-component recipes into sequential planning steps
+        - Analyze web search results systematically before incorporating into the recipe
+        - Verify that all guidelines are properly followed (MDX component usage, metric units, formatting, dietary restrictions)
+        - Ensure each decision builds logically on previous ones for consistency
+        
+        Use Sequential Thinking especially when:
+        - Planning recipes with multiple components (e.g., protein + marinade + sides)
+        - Determining how to incorporate dietary restrictions or substitutions
+        - Verifying compliance with all formatting and style requirements
 
         ## Audience
 
@@ -642,11 +660,14 @@ const processRecipe = createServerFn({ method: "POST" })
       throw new Error("Could not extract markdown from page");
     }
 
+    const mcpTools = await getAllMCPTools();
+
     // Rewrite using Vercel AI SDK (OpenAI)
     const result = await streamText({
       model: openai("gpt-4o-mini"),
       tools: {
         webSearch,
+        ...mcpTools,
       },
       stopWhen: stepCountIs(5),
       prompt: dedent`\
@@ -674,6 +695,20 @@ ${context}
         - Search for regional variations or cooking styles relevant to the recipe
         
         Use web search to gather additional context before rewriting the recipe to ensure it meets all requirements.
+
+        ## Important: Using Sequential Thinking Tools
+
+        When analyzing complex recipe requirements or making critical decisions about cooking methods, use the Sequential Thinking tools available to you. These tools help you:
+        
+        - Break down complex multi-component recipes into sequential planning steps
+        - Analyze web search results systematically before incorporating into the recipe
+        - Verify that all guidelines are properly followed (MDX component usage, metric units, formatting, dietary restrictions)
+        - Ensure each decision builds logically on previous ones for consistency
+        
+        Use Sequential Thinking especially when:
+        - Planning recipes with multiple components (e.g., protein + marinade + sides)
+        - Determining how to incorporate dietary restrictions or substitutions
+        - Verifying compliance with all formatting and style requirements
 
         ## Audience
 
@@ -1059,10 +1094,13 @@ const generateLucky = createServerFn({ method: "POST" })
     }) => d
   )
   .handler(async ({ data }) => {
+    const mcpTools = await getAllMCPTools();
+
     const result = await streamText({
       model: openai("gpt-4o-mini"),
       tools: {
         webSearch,
+        ...mcpTools,
       },
       stopWhen: stepCountIs(5),
       prompt: dedent`\
@@ -1090,6 +1128,20 @@ ${data.context}
         - Search for any specific requirements, allergies, or dietary restrictions mentioned
         
         Only after gathering information from web searches should you generate the final recipe. This ensures the recipe is informed by current culinary knowledge and best practices.
+
+        ## Important: Using Sequential Thinking Tools
+
+        When analyzing complex recipe requirements or making critical decisions about cooking methods, use the Sequential Thinking tools available to you. These tools help you:
+        
+        - Break down complex multi-component recipes into sequential planning steps
+        - Analyze web search results systematically before incorporating into the recipe
+        - Verify that all guidelines are properly followed (MDX component usage, metric units, formatting, dietary restrictions)
+        - Ensure each decision builds logically on previous ones for consistency
+        
+        Use Sequential Thinking especially when:
+        - Planning recipes with multiple components (e.g., protein + marinade + sides)
+        - Determining how to incorporate dietary restrictions or substitutions
+        - Verifying compliance with all formatting and style requirements
 
         ## Audience
 
@@ -1480,6 +1532,8 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
       throw new Error("Missing existing recipe");
     }
 
+    const mcpTools = await getAllMCPTools();
+
     const basePrompt = dedent`\
       ## Context
 
@@ -1495,6 +1549,20 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
       - Search for any specific requirements, allergies, or dietary restrictions mentioned
       
       Only after gathering information from web searches should you generate the final recipe. This ensures the recipe is informed by current culinary knowledge and best practices.
+
+      ## Important: Using Sequential Thinking Tools
+
+      When analyzing complex recipe requirements or making critical decisions about cooking methods, use the Sequential Thinking tools available to you. These tools help you:
+      
+      - Break down complex multi-component recipes into sequential planning steps
+      - Analyze web search results systematically before incorporating into the recipe
+      - Verify that all guidelines are properly followed (MDX component usage, metric units, formatting, dietary restrictions)
+      - Ensure each decision builds logically on previous ones for consistency
+      
+      Use Sequential Thinking especially when:
+      - Planning recipes with multiple components (e.g., protein + marinade + sides)
+      - Determining how to incorporate dietary restrictions or substitutions
+      - Verifying compliance with all formatting and style requirements
 
       ## Audience
 
@@ -1623,6 +1691,7 @@ ${originalContext}
       model: openai("gpt-4o-mini"),
       tools: {
         webSearch,
+        ...mcpTools,
       },
       stopWhen: stepCountIs(5),
       prompt: basePrompt,
