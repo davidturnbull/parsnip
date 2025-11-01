@@ -192,6 +192,12 @@ const generateFromPrompt = createServerFn({ method: "POST" })
         ## Context
 
         Parsnip is an AI agent that writes and rewrite recipes.
+        ${data?.context ? `\n### **CRITICAL: User Requirements**
+
+The following user-provided context MUST be strictly adhered to when generating the recipe:
+${data.context}
+
+**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and incorporated into the recipe.` : ""}
 
         ## Important: Web Search Requirement
 
@@ -560,7 +566,6 @@ const generateFromPrompt = createServerFn({ method: "POST" })
         Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
         Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
         Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
-        ${data?.context ? `Additional context to consider: ${data.context}` : ""}
 
         Now produce the recipe that follows all rules above.
         Input: "${userPrompt}"
@@ -609,6 +614,12 @@ const processRecipe = createServerFn({ method: "POST" })
         ## Context
 
         Parsnip is an AI agent that writes and rewrite recipes.
+        ${context ? `\n### **CRITICAL: User Requirements**
+
+The following user-provided context MUST be strictly adhered to when rewriting the recipe:
+${context}
+
+**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and incorporated into the recipe.` : ""}
 
         ## Important: Web Search Requirement
 
@@ -980,7 +991,6 @@ const processRecipe = createServerFn({ method: "POST" })
         Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
         Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
         Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
-        ${context ? `Additional context to consider: ${context}` : ""}
 
         Rewrite the following source into a recipe that follows all rules above while keeping original quantities when reasonable.
         --- PAGE CONTENT START ---
@@ -1115,7 +1125,12 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
       Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
       Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
       Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
-      ${originalContext ? `Additional context to consider: ${originalContext}` : ""}
+      ${originalContext ? `\n### **CRITICAL: User Requirements**
+
+The following user-provided context MUST be strictly adhered to when simplifying the recipe:
+${originalContext}
+
+**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and maintained in the simplified version.` : ""}
 
       ## IMPORTANT: Simplify Further
 
@@ -1246,7 +1261,7 @@ function App() {
         } else if (prompt) {
           const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
           const languageLabel = getLanguageLabel(language as any);
-          const res = await generateFromPrompt({ data: { prompt, context: globalContext, language, region, languageLabel, regionLabel, regionFlag } });
+          const res = await generateFromPrompt({ data: { prompt, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
           if (!cancelled) setMdx(res.mdx);
         }
       } catch (err: any) {
