@@ -1916,7 +1916,16 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [url, prompt, lucky, context, language, region, globalContext, combinedContext]);
+  }, [
+    url,
+    prompt,
+    lucky,
+    context,
+    language,
+    region,
+    globalContext,
+    combinedContext,
+  ]);
 
   // Rotate whimsical loading messages while loading
   useEffect(() => {
@@ -2021,8 +2030,8 @@ function App() {
                           aria-label="Generate a random recipe using my settings"
                           className="rounded-md px-4 py-2 text-sm font-medium font-ui border border-surface-dark bg-surface text-primary-dark hover:bg-parsnip-peach-light"
                           onClick={() => {
-                            const url = `/?lucky=1`
-                            window.location.href = url
+                            const url = `/?lucky=1`;
+                            window.location.href = url;
                           }}
                         >
                           I'm feeling lucky
@@ -2205,16 +2214,18 @@ function App() {
                     {dumbingDown ? "Simplifying..." : "Dumb this down"}
                   </button>
                 </div>
-                <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
-                  <MdxRenderer
-                    source={mdx}
-                    components={components}
-                    onFirstValidCompilation={() => {
-                      setHasValidMdx(true);
-                      setLoading(false);
-                    }}
-                  />
-                </article>
+                <div className="rounded-xl border border-surface-dark bg-white p-6 shadow-sm">
+                  <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
+                    <MdxRenderer
+                      source={mdx}
+                      components={components}
+                      onFirstValidCompilation={() => {
+                        setHasValidMdx(true);
+                        setLoading(false);
+                      }}
+                    />
+                  </article>
+                </div>
               </>
             )}
           </>
