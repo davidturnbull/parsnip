@@ -12,6 +12,7 @@ import { TemperatureProvider, Temperature } from "@/components/Temperature";
 import { WeightProvider, Weight } from "@/components/Weight";
 import { VolumeProvider, Volume } from "@/components/Volume";
 import { LengthProvider, Length } from "@/components/Length";
+import dedent from "dedent";
 
 type Result = {
   mdx: string;
@@ -27,30 +28,30 @@ const generateFromPrompt = createServerFn({ method: "POST" })
 
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
-      prompt: [
-        "Create a simple, beginner-friendly recipe from this request.",
-        "Keep it short and friendly. Use:",
-        "- A simple title",
-        "- An ingredients list",
-        "- Numbered steps",
-        "- Optional tips",
-        "",
-        "Output MDX only. Do NOT include import statements.",
-        "You can use these globally available MDX components without importing:",
-        "- <Temperature value={numberInCelsius} />",
-        "- <Weight value={grams} />",
-        "- <Volume value={milliliters} />",
-        "- <Length value={centimeters} />",
-        "",
-        "Usage examples (copy exact tag names; no imports):",
-        "- Preheat oven: Preheat to <Temperature value={180} />.",
-        "- Ingredient weight: <Weight value={500} /> flour",
-        "- Liquid: <Volume value={250} /> milk",
-        "- Pan size: Use a <Length value={20} /> round pan",
-        "",
-        "User request:",
-        userPrompt,
-      ].join("\n"),
+      prompt: dedent`\
+        Create a simple, beginner-friendly recipe from this request.
+        Keep it short and friendly. Use:
+        - A simple title
+        - An ingredients list
+        - Numbered steps
+        - Optional tips
+
+        Output MDX only. Do NOT include import statements.
+        You can use these globally available MDX components without importing:
+        - <Temperature value={numberInCelsius} />
+        - <Weight value={grams} />
+        - <Volume value={milliliters} />
+        - <Length value={centimeters} />
+
+        Usage examples (copy exact tag names; no imports):
+        - Preheat oven: Preheat to <Temperature value={180} />.
+        - Ingredient weight: <Weight value={500} /> flour
+        - Liquid: <Volume value={250} /> milk
+        - Pan size: Use a <Length value={20} /> round pan
+
+        User request:
+        ${userPrompt}
+      `,
       temperature: 0.4,
     });
 
@@ -87,34 +88,35 @@ const processRecipe = createServerFn({ method: "POST" })
     // Rewrite using Vercel AI SDK (OpenAI)
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
-      prompt: [
-        "Rewrite this recipe for an absolute beginner.",
-        "Keep it short and friendly. Use:",
-        "- A simple title",
-        "- An ingredients list",
-        "- Numbered steps",
-        "- Optional tips",
-        "",
-        context ? `Consider these preferences and adapt the recipe: ${context}` : "",
-        "Output MDX only. Do NOT include import statements.",
-        "You can use these globally available MDX components without importing:",
-        "- <Temperature value={numberInCelsius} />",
-        "- <Weight value={grams} />",
-        "- <Volume value={milliliters} />",
-        "- <Length value={centimeters} />",
-        "",
-        "Usage examples (copy exact tag names; no imports):",
-        "- Preheat oven: Preheat to <Temperature value={180} />.",
-        "- Ingredient weight: <Weight value={500} /> flour",
-        "- Liquid: <Volume value={250} /> milk",
-        "- Pan size: Use a <Length value={20} /> round pan",
-        "",
-        "When possible, keep original quantities from the page.",
-        "",
-        "--- PAGE CONTENT START ---",
-        pageMarkdown,
-        "--- PAGE CONTENT END ---",
-      ].join("\n"),
+      prompt: dedent`\
+        Rewrite this recipe for an absolute beginner.
+        Keep it short and friendly. Use:
+        - A simple title
+        - An ingredients list
+        - Numbered steps
+        - Optional tips
+
+        ${context ? `Consider these preferences and adapt the recipe: ${context}` : ""}
+
+        Output MDX only. Do NOT include import statements.
+        You can use these globally available MDX components without importing:
+        - <Temperature value={numberInCelsius} />
+        - <Weight value={grams} />
+        - <Volume value={milliliters} />
+        - <Length value={centimeters} />
+
+        Usage examples (copy exact tag names; no imports):
+        - Preheat oven: Preheat to <Temperature value={180} />.
+        - Ingredient weight: <Weight value={500} /> flour
+        - Liquid: <Volume value={250} /> milk
+        - Pan size: Use a <Length value={20} /> round pan
+
+        When possible, keep original quantities from the page.
+
+        --- PAGE CONTENT START ---
+        ${pageMarkdown}
+        --- PAGE CONTENT END ---
+      `,
       temperature: 0.3,
     });
 
