@@ -6,8 +6,9 @@ import { MDXProvider } from "@mdx-js/react";
 import { evaluate } from "@mdx-js/mdx";
 import * as mdxRuntime from "react/jsx-runtime";
 import * as mdxDevRuntime from "react/jsx-dev-runtime";
-import { generateText } from "ai";
+import { generateText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
+import { z } from "zod";
 import { FirecrawlClient } from "@mendable/firecrawl-js";
 import { Temperature } from "@/components/Temperature";
 import { Weight } from "@/components/Weight";
@@ -19,6 +20,50 @@ import dedent from "dedent";
 type Result = {
   mdx: string;
 };
+
+const webSearch = tool({
+  description: "Search the web for up-to-date information about recipes, ingredients, cooking techniques, dietary requirements, substitutions, alternative ingredients, cooking methods, and other relevant culinary information. Use this tool to research recipe options and gather information before generating a recipe.",
+  inputSchema: z.object({
+    query: z.string().min(1).max(200).describe("The search query to find relevant recipe information, ingredient substitutions, cooking techniques, or dietary considerations"),
+  }),
+  execute: async ({ query }) => {
+    const firecrawl = new FirecrawlClient({
+      // Reads FIRECRAWL_API_KEY from env by default
+    });
+
+    try {
+      const searchResponse = await firecrawl.search(query, {
+        limit: 5,
+        sources: ["web"],
+        scrapeOptions: {
+          formats: ["markdown"],
+          onlyMainContent: true,
+        },
+      });
+
+      if (!searchResponse || !searchResponse.success || !searchResponse.data?.web || searchResponse.data.web.length === 0) {
+        return {
+          results: [],
+          message: "No search results found",
+        };
+      }
+
+      return {
+        results: searchResponse.data.web.map((result: any) => ({
+          title: result.title || result.metadata?.title || "Untitled",
+          url: result.url || result.metadata?.sourceURL || "",
+          content: result.markdown?.slice(0, 1000) || result.description?.slice(0, 1000) || "",
+          publishedDate: result.metadata?.publishedDate,
+        })),
+      };
+    } catch (error) {
+      return {
+        results: [],
+        message: `Search failed: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  },
+});
 
 // Fun messages shown while recipes are loading
 const LOADING_MESSAGES = [
@@ -44,10 +89,25 @@ const generateFromPrompt = createServerFn({ method: "POST" })
 
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
+      tools: {
+        webSearch,
+      },
+      stopWhen: stepCountIs(5),
       prompt: dedent`\
         ## Context
 
         Parsnip is an AI agent that writes and rewrite recipes.
+
+        ## Important: Web Search Requirement
+
+        **CRITICAL:** Before generating any recipe, you MUST use the webSearch tool to search for relevant recipe information. You should:
+        
+        - Search for 2-4 different recipe variations or approaches based on the user's prompt
+        - Search for ingredient substitutions, alternatives, or dietary considerations if mentioned in the context
+        - Search for cooking techniques or methods relevant to the recipe
+        - Search for any specific requirements, allergies, or dietary restrictions mentioned
+        
+        Only after gathering information from web searches should you generate the final recipe. This ensures the recipe is informed by current culinary knowledge and best practices.
 
         ## Audience
 
@@ -446,10 +506,25 @@ const processRecipe = createServerFn({ method: "POST" })
     // Rewrite using Vercel AI SDK (OpenAI)
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
+      tools: {
+        webSearch,
+      },
+      stopWhen: stepCountIs(5),
       prompt: dedent`\
         ## Context
 
         Parsnip is an AI agent that writes and rewrite recipes.
+
+        ## Important: Web Search Requirement
+
+        **IMPORTANT:** Use the webSearch tool to search for relevant information if needed, especially:
+        
+        - Search for ingredient substitutions or alternatives based on the user's context
+        - Search for cooking techniques or methods that might be relevant
+        - Search for dietary requirements, allergies, or modifications if mentioned in the context
+        - Search for regional variations or cooking styles relevant to the recipe
+        
+        Use web search to gather additional context before rewriting the recipe to ensure it meets all requirements.
 
         ## Audience
 
