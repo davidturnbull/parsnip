@@ -1,118 +1,189 @@
-import { createFileRoute } from '@tanstack/react-router'
-import {
-  Zap,
-  Server,
-  Route as RouteIcon,
-  Shield,
-  Waves,
-  Sparkles,
-} from 'lucide-react'
+import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { useEffect, useMemo, useState } from "react";
+import { MDXProvider } from "@mdx-js/react";
+import { evaluate } from "@mdx-js/mdx";
+import * as mdxRuntime from "react/jsx-runtime";
+import * as mdxDevRuntime from "react/jsx-dev-runtime";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { FirecrawlClient } from "@mendable/firecrawl-js";
 
-export const Route = createFileRoute('/')({ component: App })
+type Result = {
+  mdx: string;
+};
+
+const processRecipe = createServerFn({ method: "POST" })
+  .inputValidator((d: { url: string }) => d)
+  .handler(async ({ data }) => {
+    const url = data?.url;
+    if (!url) {
+      throw new Error("Missing url");
+    }
+
+    const firecrawl = new FirecrawlClient({
+      // Reads FIRECRAWL_API_KEY from env by default
+    });
+
+    // Fetch the page as markdown
+    const doc = await firecrawl.scrape(url, {
+      formats: ["markdown"],
+      onlyMainContent: true,
+      removeBase64Images: true,
+      blockAds: true,
+    });
+
+    const pageMarkdown = doc?.markdown || "";
+    if (!pageMarkdown) {
+      throw new Error("Could not extract markdown from page");
+    }
+
+    // Rewrite using Vercel AI SDK (OpenAI)
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      prompt:
+        "Rewrite this recipe for an absolute beginner. Use a simple title, a clear ingredients list, and numbered steps. Keep jargon minimal. Output in Markdown/MDX only.\n\n--- PAGE CONTENT START ---\n" +
+        pageMarkdown +
+        "\n--- PAGE CONTENT END ---",
+      temperature: 0.3,
+    });
+
+    const cleaned = (text || "").trim();
+    return { mdx: cleaned } satisfies Result;
+  });
+
+export const Route = createFileRoute("/")({
+  component: App,
+  validateSearch: (search: Record<string, unknown>) => ({
+    url: (search.url as string) || "",
+  }),
+});
 
 function App() {
-  const features = [
-    {
-      icon: <Zap className="w-12 h-12 text-cyan-400" />,
-      title: 'Powerful Server Functions',
-      description:
-        'Write server-side code that seamlessly integrates with your client components. Type-safe, secure, and simple.',
-    },
-    {
-      icon: <Server className="w-12 h-12 text-cyan-400" />,
-      title: 'Flexible Server Side Rendering',
-      description:
-        'Full-document SSR, streaming, and progressive enhancement out of the box. Control exactly what renders where.',
-    },
-    {
-      icon: <RouteIcon className="w-12 h-12 text-cyan-400" />,
-      title: 'API Routes',
-      description:
-        'Build type-safe API endpoints alongside your application. No separate backend needed.',
-    },
-    {
-      icon: <Shield className="w-12 h-12 text-cyan-400" />,
-      title: 'Strongly Typed Everything',
-      description:
-        'End-to-end type safety from server to client. Catch errors before they reach production.',
-    },
-    {
-      icon: <Waves className="w-12 h-12 text-cyan-400" />,
-      title: 'Full Streaming Support',
-      description:
-        'Stream data from server to client progressively. Perfect for AI applications and real-time updates.',
-    },
-    {
-      icon: <Sparkles className="w-12 h-12 text-cyan-400" />,
-      title: 'Next Generation Ready',
-      description:
-        'Built from the ground up for modern web applications. Deploy anywhere JavaScript runs.',
-    },
-  ]
+  const { url } = Route.useSearch() as { url: string };
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mdx, setMdx] = useState<string>("");
+  const [inputUrl, setInputUrl] = useState(url);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!url) return;
+      setLoading(true);
+      setError(null);
+      setMdx("");
+      try {
+        const res = await processRecipe({ data: { url } });
+        if (!cancelled) setMdx(res.mdx);
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message || "Something went wrong");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  const components = useMemo(() => {
+    // Placeholder for custom MDX components you can add later
+    // Example: { h1: (props) => <h1 className="text-2xl" {...props} /> }
+    return {} as Record<string, any>;
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      <section className="relative py-20 px-6 text-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10"></div>
-        <div className="relative max-w-5xl mx-auto">
-          <div className="flex items-center justify-center gap-6 mb-6">
-            <img
-              src="/tanstack-circle-logo.png"
-              alt="TanStack Logo"
-              className="w-24 h-24 md:w-32 md:h-32"
-            />
-            <h1 className="text-6xl md:text-7xl font-black text-white [letter-spacing:-0.08em]">
-              <span className="text-gray-300">TANSTACK</span>{' '}
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                START
-              </span>
-            </h1>
-          </div>
-          <p className="text-2xl md:text-3xl text-gray-300 mb-4 font-light">
-            The framework for next generation AI applications
-          </p>
-          <p className="text-lg text-gray-400 max-w-3xl mx-auto mb-8">
-            Full-stack framework powered by TanStack Router for React and Solid.
-            Build modern applications with server functions, streaming, and type
-            safety.
-          </p>
-          <div className="flex flex-col items-center gap-4">
-            <a
-              href="https://tanstack.com/start"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-8 py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
-            >
-              Documentation
-            </a>
-            <p className="text-gray-400 text-sm mt-2">
-              Begin your TanStack Start journey by editing{' '}
-              <code className="px-2 py-1 bg-slate-700 rounded text-cyan-400">
-                /src/routes/index.tsx
-              </code>
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen bg-slate-900 text-slate-100">
+      <div className="max-w-3xl mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold mb-4">Parsnip</h1>
+        <p className="text-slate-400 mb-4">
+          Paste a recipe URL or load with <code>/?url=...</code>
+        </p>
 
-      <section className="py-16 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10"
-            >
-              <div className="mb-4">{feature.icon}</div>
-              <h3 className="text-xl font-semibold text-white mb-3">
-                {feature.title}
-              </h3>
-              <p className="text-gray-400 leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+        <div className="flex gap-2 mb-6">
+          <input
+            className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            placeholder="https://example.com/your-recipe"
+            value={inputUrl}
+            onChange={(e) => setInputUrl(e.target.value)}
+          />
+          <a
+            href={`/?url=${encodeURIComponent(inputUrl || "")}`}
+            className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
+          >
+            Go
+          </a>
         </div>
-      </section>
+
+        {loading && (
+          <div className="animate-pulse rounded-md border border-slate-800 bg-slate-800/50 p-6">
+            Loading recipe and rewriting for beginners...
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-md border border-red-800 bg-red-900/20 p-4 text-red-300">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && mdx && (
+          <article className="prose prose-invert max-w-none">
+            <MdxRenderer source={mdx} components={components} />
+          </article>
+        )}
+
+        {!loading && !error && !mdx && !url && (
+          <div className="text-slate-400 text-sm">
+            Tip: open something like{" "}
+            <code>
+              /?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/
+            </code>
+          </div>
+        )}
+      </div>
     </div>
-  )
+  );
+}
+
+function MdxRenderer({
+  source,
+  components,
+}: {
+  source: string;
+  components: Record<string, any>;
+}) {
+  const [Comp, setComp] = useState<any>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const dev = Boolean((import.meta as any)?.env?.DEV);
+        const runtime = dev ? mdxDevRuntime : mdxRuntime;
+        const mod = await evaluate(source, {
+          ...runtime,
+          useMDXComponents: () => components,
+          development: dev,
+        } as any);
+        if (!cancelled) setComp(() => mod.default);
+      } catch (e) {
+        if (!cancelled)
+          setComp(() => () => <pre className="text-red-300">{String(e)}</pre>);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [source, components]);
+
+  if (!Comp) return <div className="text-slate-400">Rendering…</div>;
+  return (
+    <MDXProvider components={components}>
+      <Comp />
+    </MDXProvider>
+  );
 }
