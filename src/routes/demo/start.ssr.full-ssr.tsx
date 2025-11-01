@@ -12,7 +12,7 @@ function RouteComponent() {
   return (
     <div className="flex items-center justify-center min-h-screen p-4 text-primary-dark">
       <div className="w-full max-w-2xl p-8 rounded-xl bg-surface border border-surface-dark shadow-sm">
-        <h1 className="text-3xl font-bold mb-6 text-primary">Full SSR - Punk Songs</h1>
+        <h1 className="text-3xl font-bold mb-6 text-primary font-ui font-ui-heading">Full SSR - Punk Songs</h1>
         <ul className="space-y-3">
           {punkSongs.map((song) => (
             <li

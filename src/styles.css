@@ -22,6 +22,26 @@
   --color-parsnip-leaf-light: color-mix(in srgb, var(--color-parsnip-leaf) 70%, white);
 }
 
+:root {
+  --ui-font: 'Pixelify Sans', system-ui, sans-serif;
+}
+
+.font-ui {
+  font-family: var(--ui-font);
+  -webkit-font-smoothing: auto; /* undo grayscale smoothing */
+  -moz-osx-font-smoothing: auto;
+  text-rendering: optimizeSpeed;
+  letter-spacing: 0.02em;
+}
+
+.font-ui-heading {
+  font-family: var(--ui-font);
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+  text-rendering: optimizeSpeed;
+  letter-spacing: 0.04em;
+}
+
 body {
   @apply m-0 bg-background text-primary-dark;
   font-family:

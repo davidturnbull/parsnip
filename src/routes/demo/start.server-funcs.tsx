@@ -65,7 +65,7 @@ function Home() {
   return (
     <div className="flex items-center justify-center min-h-screen p-4 text-primary-dark">
       <div className="w-full max-w-2xl p-8 rounded-xl bg-surface border border-surface-dark shadow-sm">
-        <h1 className="text-2xl mb-4 text-primary">Start Server Functions - Todo Example</h1>
+        <h1 className="text-2xl mb-4 text-primary font-ui font-ui-heading">Start Server Functions - Todo Example</h1>
         <ul className="mb-4 space-y-2">
           {todos?.map((t) => (
             <li
