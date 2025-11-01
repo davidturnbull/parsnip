@@ -15,6 +15,9 @@ import { Weight } from "@/components/Weight";
 import { Volume } from "@/components/Volume";
 import { Length } from "@/components/Length";
 import { useSettings, getLanguageLabel, getRegionMeta } from "@/components/Settings";
+import { usePaymentStatus } from "@/hooks/usePaymentStatus";
+import { PaywallOverlay } from "@/components/PaywallOverlay";
+import { verifyPayment } from "@/api/stripe";
 import dedent from "dedent";
 
 type Result = {
@@ -1176,10 +1179,30 @@ function App() {
     `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
   // Unit providers and settings are now handled globally in the root layout
   const { language, region, context: globalContext } = useSettings();
+  const { hasPaid, markAsPaid, checkPaymentFromUrl } = usePaymentStatus();
   const combinedContext = useMemo(() => {
     const parts = [globalContext, context].map((s) => (s || "").trim()).filter(Boolean)
     return parts.join("\n")
   }, [globalContext, context]);
+
+  useEffect(() => {
+    const paymentInfo = checkPaymentFromUrl();
+    if (paymentInfo?.success && paymentInfo.sessionId) {
+      verifyPayment({ data: { sessionId: paymentInfo.sessionId } })
+        .then((response) => {
+          if (response?.paid) {
+            markAsPaid();
+            const url = new URL(window.location.href);
+            url.searchParams.delete("payment");
+            url.searchParams.delete("session_id");
+            window.history.replaceState({}, "", url.toString());
+          }
+        })
+        .catch((error) => {
+          console.error("Payment verification failed:", error);
+        });
+    }
+  }, [checkPaymentFromUrl, markAsPaid]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1377,15 +1400,20 @@ function App() {
                     <label className="block text-sm mb-1 text-primary-dark font-ui" htmlFor="import-context">
                       Additional context (optional)
                     </label>
-                    <textarea
-                      id="import-context"
-                      className="w-full min-h-20 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
-                      placeholder="Dietary requirements, substitutions, spice tolerance, allergies, tools available, etc."
-                      aria-label="Additional context"
-                      name="context"
-                      value={inputContext}
-                      onChange={(e) => setInputContext(e.target.value)}
-                    />
+                    <div className="relative">
+                      <textarea
+                        id="import-context"
+                        className="w-full min-h-20 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
+                        placeholder="Dietary requirements, substitutions, spice tolerance, allergies, tools available, etc."
+                        aria-label="Additional context"
+                        name="context"
+                        value={inputContext}
+                        onChange={(e) => setInputContext(e.target.value)}
+                        disabled={!hasPaid}
+                        readOnly={!hasPaid}
+                      />
+                      {!hasPaid && <PaywallOverlay />}
+                    </div>
                   </div>
                 </form>
                 <div className="text-xs mt-2 text-primary-dark/60">

@@ -29,6 +29,22 @@ pnpm test
 
 This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
 
+## Stripe Integration
+
+This app includes Stripe integration for paywalling the "additional context" feature. To enable it, set the following environment variables:
+
+- `STRIPE_SECRET_KEY`: Your Stripe secret key (required for server-side operations)
+- `STRIPE_PRICE_AMOUNT`: Price in cents (default: 500 = $5.00)
+- `BASE_URL`: Your app's base URL for redirects (default: http://localhost:3000)
+
+Create a `.env` file in the root directory with:
+
+```
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PRICE_AMOUNT=500
+BASE_URL=http://localhost:3000
+```
+
 
 
 
