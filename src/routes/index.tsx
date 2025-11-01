@@ -287,6 +287,8 @@ ${data.context}
         - Specify the tool before the quantity of the tool
         - If only one instance of a tool is required, don't specify a quantity
         - Sort tools from most fundamental to least fundamental
+        - Choose the best tool for absolute beginners - select the simplest, most accessible option
+        - Never offer multiple tool options - decide on the best one and specify it definitively
 
         ### Ingredients
 
@@ -296,6 +298,9 @@ ${data.context}
             - Organize the ingredients by component
             - Use a h3 sub-heading for each component name
         - If an ingredient is used in multiple components, specify the ingredient for each component (with the appropriate quantity)
+        - Choose the best ingredients for absolute beginners - select simple, widely available options
+        - Never offer ingredient alternatives or substitutions - decide on the best option and specify it definitively
+        - Provide exact quantities in metric units using the MDX components
 
         ### Steps
 
@@ -327,6 +332,8 @@ ${data.context}
         - The MDX components will handle unit conversion automatically for the user
         - Ensure MDX syntax is perfectly correct with proper opening and closing tags
         - Do NOT export these components
+        - IMPORTANT: Choose the best measurements for your audience - absolute beginners need precise, simple values in metric
+        - Never offer options or alternatives - decide on the best ingredient, tool, or technique and specify it definitively
         - Examples:
             - Correct: Preheat oven to <Temperature value={180} />.
             - Correct: <Weight value={500} /> flour
@@ -336,6 +343,8 @@ ${data.context}
             - Incorrect: 2 cups (500ml) milk
             - Incorrect: 180°C (350°F)
             - Incorrect: 20cm / 8 inch pan
+            - Incorrect: "use any pan" or "or you could use a wok"
+            - Incorrect: "salt to taste" or "optional garnish"
 
         ### Output format
 
@@ -739,6 +748,8 @@ ${context}
         - Specify the tool before the quantity of the tool
         - If only one instance of a tool is required, don't specify a quantity
         - Sort tools from most fundamental to least fundamental
+        - Choose the best tool for absolute beginners - select the simplest, most accessible option
+        - Never offer multiple tool options - decide on the best one and specify it definitively
 
         ### Ingredients
 
@@ -748,6 +759,9 @@ ${context}
             - Organize the ingredients by component
             - Use a h3 sub-heading for each component name
         - If an ingredient is used in multiple components, specify the ingredient for each component (with the appropriate quantity)
+        - Choose the best ingredients for absolute beginners - select simple, widely available options
+        - Never offer ingredient alternatives or substitutions - decide on the best option and specify it definitively
+        - Provide exact quantities in metric units using the MDX components
 
         ### Steps
 
@@ -779,6 +793,8 @@ ${context}
         - The MDX components will handle unit conversion automatically for the user
         - Ensure MDX syntax is perfectly correct with proper opening and closing tags
         - Do NOT export these components
+        - IMPORTANT: Choose the best measurements for your audience - absolute beginners need precise, simple values in metric
+        - Never offer options or alternatives - decide on the best ingredient, tool, or technique and specify it definitively
         - Examples:
             - Correct: Preheat oven to <Temperature value={180} />.
             - Correct: <Weight value={500} /> flour
@@ -788,6 +804,8 @@ ${context}
             - Incorrect: 2 cups (500ml) milk
             - Incorrect: 180°C (350°F)
             - Incorrect: 20cm / 8 inch pan
+            - Incorrect: "use any pan" or "or you could use a wok"
+            - Incorrect: "salt to taste" or "optional garnish"
 
         ### Output format
 
@@ -1172,6 +1190,8 @@ ${data.context}
         - Specify the tool before the quantity of the tool
         - If only one instance of a tool is required, don't specify a quantity
         - Sort tools from most fundamental to least fundamental
+        - Choose the best tool for absolute beginners - select the simplest, most accessible option
+        - Never offer multiple tool options - decide on the best one and specify it definitively
 
         ### Ingredients
 
@@ -1181,6 +1201,9 @@ ${data.context}
             - Organize the ingredients by component
             - Use a h3 sub-heading for each component name
         - If an ingredient is used in multiple components, specify the ingredient for each component (with the appropriate quantity)
+        - Choose the best ingredients for absolute beginners - select simple, widely available options
+        - Never offer ingredient alternatives or substitutions - decide on the best option and specify it definitively
+        - Provide exact quantities in metric units using the MDX components
 
         ### Steps
 
@@ -1212,6 +1235,8 @@ ${data.context}
         - The MDX components will handle unit conversion automatically for the user
         - Ensure MDX syntax is perfectly correct with proper opening and closing tags
         - Do NOT export these components
+        - IMPORTANT: Choose the best measurements for your audience - absolute beginners need precise, simple values in metric
+        - Never offer options or alternatives - decide on the best ingredient, tool, or technique and specify it definitively
         - Examples:
             - Correct: Preheat oven to <Temperature value={180} />.
             - Correct: <Weight value={500} /> flour
@@ -1221,6 +1246,8 @@ ${data.context}
             - Incorrect: 2 cups (500ml) milk
             - Incorrect: 180°C (350°F)
             - Incorrect: 20cm / 8 inch pan
+            - Incorrect: "use any pan" or "or you could use a wok"
+            - Incorrect: "salt to taste" or "optional garnish"
 
         ### Output format
 
@@ -1593,6 +1620,8 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
       - Specify the tool before the quantity of the tool
       - If only one instance of a tool is required, don't specify a quantity
       - Sort tools from most fundamental to least fundamental
+      - Choose the best tool for absolute beginners - select the simplest, most accessible option
+      - Never offer multiple tool options - decide on the best one and specify it definitively
 
       ### Ingredients
 
@@ -1602,6 +1631,9 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
           - Organize the ingredients by component
           - Use a h3 sub-heading for each component name
       - If an ingredient is used in multiple components, specify the ingredient for each component (with the appropriate quantity)
+      - Choose the best ingredients for absolute beginners - select simple, widely available options
+      - Never offer ingredient alternatives or substitutions - decide on the best option and specify it definitively
+      - Provide exact quantities in metric units using the MDX components
 
       ### Steps
 
@@ -1633,6 +1665,8 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
       - The MDX components will handle unit conversion automatically for the user
       - Ensure MDX syntax is perfectly correct with proper opening and closing tags
       - Do NOT export these components
+      - IMPORTANT: Choose the best measurements for your audience - absolute beginners need precise, simple values in metric
+      - Never offer options or alternatives - decide on the best ingredient, tool, or technique and specify it definitively
       - Examples:
           - Correct: Preheat oven to <Temperature value={180} />.
           - Correct: <Weight value={500} /> flour
@@ -1642,6 +1676,8 @@ const dumbDownRecipe = createServerFn({ method: "POST" })
           - Incorrect: 2 cups (500ml) milk
           - Incorrect: 180°C (350°F)
           - Incorrect: 20cm / 8 inch pan
+          - Incorrect: "use any pan" or "or you could use a wok"
+          - Incorrect: "salt to taste" or "optional garnish"
 
       ### Output format
 
