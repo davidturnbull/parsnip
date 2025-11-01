@@ -6,7 +6,7 @@ import { MDXProvider } from "@mdx-js/react";
 import { evaluate } from "@mdx-js/mdx";
 import * as mdxRuntime from "react/jsx-runtime";
 import * as mdxDevRuntime from "react/jsx-dev-runtime";
-import { generateText, tool, stepCountIs } from "ai";
+import { streamText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { FirecrawlClient } from "@mendable/firecrawl-js";
@@ -20,9 +20,6 @@ import { Paywall } from "@/components/PaywallOverlay";
 import { verifyPayment } from "@/api/stripe";
 import dedent from "dedent";
 
-type Result = {
-  mdx: string;
-};
 
 const webSearch = tool({
   description: "Search the web for up-to-date information about recipes, ingredients, cooking techniques, dietary requirements, substitutions, alternative ingredients, cooking methods, and other relevant culinary information. Use this tool to research recipe options and gather information before generating a recipe.",
@@ -182,7 +179,7 @@ const generateFromPrompt = createServerFn({ method: "POST" })
       throw new Error("Missing prompt");
     }
 
-    const { text } = await generateText({
+    const result = await streamText({
       model: openai("gpt-4o-mini"),
       tools: {
         webSearch,
@@ -573,8 +570,7 @@ ${data.context}
       temperature: 0.4,
     });
 
-    const cleaned = (text || "").trim();
-    return { mdx: cleaned } satisfies Result;
+    return result.toTextStreamResponse();
   });
 
 const processRecipe = createServerFn({ method: "POST" })
@@ -604,7 +600,7 @@ const processRecipe = createServerFn({ method: "POST" })
     }
 
     // Rewrite using Vercel AI SDK (OpenAI)
-    const { text } = await generateText({
+    const result = await streamText({
       model: openai("gpt-4o-mini"),
       tools: {
         webSearch,
@@ -1000,8 +996,7 @@ ${context}
       temperature: 0.3,
     });
 
-    const cleaned = (text || "").trim();
-    return { mdx: cleaned } satisfies Result;
+    return result.toTextStreamResponse();
   });
 
 const dumbDownRecipe = createServerFn({ method: "POST" })
@@ -1151,7 +1146,7 @@ ${originalContext}
       Now rewrite this recipe to be even simpler and more beginner-friendly, following all the guidelines above.
     `;
 
-    const { text } = await generateText({
+    const result = await streamText({
       model: openai("gpt-4o-mini"),
       tools: {
         webSearch,
@@ -1161,8 +1156,7 @@ ${originalContext}
       temperature: 0.4,
     });
 
-    const cleaned = (text || "").trim();
-    return { mdx: cleaned } satisfies Result;
+    return result.toTextStreamResponse();
   });
 
 export const Route = createFileRoute("/")({
@@ -1183,6 +1177,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mdx, setMdx] = useState<string>("");
+  const [hasValidMdx, setHasValidMdx] = useState(false);
   const [inputUrl, setInputUrl] = useState(url);
   const [inputPrompt, setInputPrompt] = useState(prompt);
   const [inputContext, setInputContext] = useState(context);
@@ -1244,30 +1239,69 @@ function App() {
       setLoading(true);
       setError(null);
       setMdx("");
+      setHasValidMdx(false);
+      let accumulatedText = "";
       try {
         if (url) {
           const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
           const languageLabel = getLanguageLabel(language as any);
-          const res = await processRecipe({ data: { url, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
-          if (!cancelled) {
-            setMdx(res.mdx);
+          const response = await processRecipe({ data: { url, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
+          if (!response.body) {
+            throw new Error("No response body");
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          while (true) {
+            if (cancelled) {
+              reader.cancel();
+              break;
+            }
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            accumulatedText += chunk;
+            if (!cancelled) {
+              setMdx(accumulatedText.trim());
+            }
+          }
+          if (!cancelled && accumulatedText) {
+            const finalText = accumulatedText.trim();
             try {
               localStorage.setItem(
                 getCacheKey(url, combinedContext),
-                JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
+                JSON.stringify({ mdx: finalText, ts: Date.now() }),
               );
             } catch {}
           }
         } else if (prompt) {
           const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
           const languageLabel = getLanguageLabel(language as any);
-          const res = await generateFromPrompt({ data: { prompt, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
-          if (!cancelled) setMdx(res.mdx);
+          const response = await generateFromPrompt({ data: { prompt, context: combinedContext, language, region, languageLabel, regionLabel, regionFlag } });
+          if (!response.body) {
+            throw new Error("No response body");
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          while (true) {
+            if (cancelled) {
+              reader.cancel();
+              break;
+            }
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            accumulatedText += chunk;
+            if (!cancelled) {
+              setMdx(accumulatedText.trim());
+            }
+          }
         }
       } catch (err: any) {
         if (!cancelled) setError(err?.message || "Something went wrong");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && !hasValidMdx) {
+          setLoading(false);
+        }
       }
     }
     run();
@@ -1443,7 +1477,7 @@ function App() {
 
         {(url || prompt) && (
           <>
-            {loading && (
+            {loading && !hasValidMdx && (
               <div
                 className="animate-pulse rounded-md border border-surface-dark bg-surface/60 p-6 font-ui"
                 role="status"
@@ -1459,18 +1493,30 @@ function App() {
               </div>
             )}
 
-            {!loading && !error && mdx && (
+            {(mdx || hasValidMdx) && (
               <>
+                {loading && (
+                  <div
+                    className="animate-pulse rounded-md border border-surface-dark bg-surface/60 p-6 font-ui mb-4"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {LOADING_MESSAGES[loadingMsgIndex]}
+                  </div>
+                )}
                 <div className="mb-4 flex justify-end">
                   <button
                     type="button"
                     onClick={async () => {
                       setDumbingDown(true);
                       setError(null);
+                      setLoading(true);
+                      setHasValidMdx(false);
+                      let accumulatedText = "";
                       try {
                         const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
                         const languageLabel = getLanguageLabel(language as any);
-                        const res = await dumbDownRecipe({
+                        const response = await dumbDownRecipe({
                           data: {
                             existingRecipe: mdx,
                             originalPrompt: prompt,
@@ -1483,12 +1529,24 @@ function App() {
                             regionFlag,
                           },
                         });
-                        setMdx(res.mdx);
-                        if (url) {
+                        if (!response.body) {
+                          throw new Error("No response body");
+                        }
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        while (true) {
+                          const { done, value } = await reader.read();
+                          if (done) break;
+                          const chunk = decoder.decode(value, { stream: true });
+                          accumulatedText += chunk;
+                          setMdx(accumulatedText.trim());
+                        }
+                        if (url && accumulatedText) {
+                          const finalText = accumulatedText.trim();
                           try {
                             localStorage.setItem(
                               getCacheKey(url, combinedContext),
-                              JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
+                              JSON.stringify({ mdx: finalText, ts: Date.now() }),
                             );
                           } catch {}
                         }
@@ -1496,6 +1554,9 @@ function App() {
                         setError(err?.message || "Something went wrong");
                       } finally {
                         setDumbingDown(false);
+                        if (!hasValidMdx) {
+                          setLoading(false);
+                        }
                       }
                     }}
                     disabled={dumbingDown}
@@ -1509,7 +1570,10 @@ function App() {
                   </button>
                 </div>
                 <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
-                  <MdxRenderer source={mdx} components={components} />
+                  <MdxRenderer source={mdx} components={components} onFirstValidCompilation={() => {
+                    setHasValidMdx(true);
+                    setLoading(false);
+                  }} />
                 </article>
               </>
             )}
@@ -1523,15 +1587,22 @@ function App() {
 function MdxRenderer({
   source,
   components,
+  onFirstValidCompilation,
 }: {
   source: string;
   components: Record<string, any>;
+  onFirstValidCompilation?: () => void;
 }) {
-  const [Comp, setComp] = useState<any>(null);
+  const [lastValidComp, setLastValidComp] = useState<any>(null);
+  const [hasCalledCallback, setHasCalledCallback] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
+      if (!source.trim()) {
+        if (!cancelled) setLastValidComp(null);
+        return;
+      }
       try {
         const dev = Boolean((import.meta as any)?.env?.DEV);
         const runtime = dev ? mdxDevRuntime : mdxRuntime;
@@ -1540,20 +1611,28 @@ function MdxRenderer({
           useMDXComponents: () => components,
           development: dev,
         } as any);
-        if (!cancelled) setComp(() => mod.default);
+        if (!cancelled) {
+          setLastValidComp(() => mod.default);
+          if (!hasCalledCallback && onFirstValidCompilation) {
+            setHasCalledCallback(true);
+            onFirstValidCompilation();
+          }
+        }
       } catch (e) {
-        if (!cancelled)
-          setComp(() => () => <pre className="text-red-700">{String(e)}</pre>);
+        if (!cancelled) {
+        }
       }
     }
     run();
     return () => {
       cancelled = true;
     };
-  }, [source, components]);
+  }, [source, components, onFirstValidCompilation, hasCalledCallback]);
 
-  if (!Comp)
+  if (!lastValidComp) {
     return <div className="text-primary-dark/70 font-ui">Rendering…</div>;
+  }
+  const Comp = lastValidComp;
   return (
     <MDXProvider components={components}>
       <Comp />
