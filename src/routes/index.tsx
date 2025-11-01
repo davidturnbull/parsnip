@@ -17,6 +17,47 @@ type Result = {
   mdx: string;
 };
 
+const generateFromPrompt = createServerFn({ method: "POST" })
+  .inputValidator((d: { prompt: string }) => d)
+  .handler(async ({ data }) => {
+    const userPrompt = (data?.prompt || "").trim();
+    if (!userPrompt) {
+      throw new Error("Missing prompt");
+    }
+
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      prompt: [
+        "Create a simple, beginner-friendly recipe from this request.",
+        "Keep it short and friendly. Use:",
+        "- A simple title",
+        "- An ingredients list",
+        "- Numbered steps",
+        "- Optional tips",
+        "",
+        "Output MDX only. Do NOT include import statements.",
+        "You can use these globally available MDX components without importing:",
+        "- <Temperature value={numberInCelsius} />",
+        "- <Weight value={grams} />",
+        "- <Volume value={milliliters} />",
+        "- <Length value={centimeters} />",
+        "",
+        "Usage examples (copy exact tag names; no imports):",
+        "- Preheat oven: Preheat to <Temperature value={180} />.",
+        "- Ingredient weight: <Weight value={500} /> flour",
+        "- Liquid: <Volume value={250} /> milk",
+        "- Pan size: Use a <Length value={20} /> round pan",
+        "",
+        "User request:",
+        userPrompt,
+      ].join("\n"),
+      temperature: 0.4,
+    });
+
+    const cleaned = (text || "").trim();
+    return { mdx: cleaned } satisfies Result;
+  });
+
 const processRecipe = createServerFn({ method: "POST" })
   .inputValidator((d: { url: string }) => d)
   .handler(async ({ data }) => {
@@ -83,15 +124,17 @@ export const Route = createFileRoute("/")({
   component: App,
   validateSearch: (search: Record<string, unknown>) => ({
     url: (search.url as string) || "",
+    prompt: (search.prompt as string) || "",
   }),
 });
 
 function App() {
-  const { url } = Route.useSearch() as { url: string };
+  const { url, prompt } = Route.useSearch() as { url: string; prompt: string };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mdx, setMdx] = useState<string>("");
   const [inputUrl, setInputUrl] = useState(url);
+  const [inputPrompt, setInputPrompt] = useState(prompt);
   const getCacheKey = (u: string) => `parsnip-cache::${encodeURIComponent(u)}`;
   const [system, setSystem] = useState<"metric" | "imperial">("metric");
 
@@ -115,36 +158,43 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!url) return;
+      if (!url && !prompt) return;
       // Try cache first to avoid redundant requests on reload
-      try {
-        const raw = localStorage.getItem(getCacheKey(url));
-        if (raw) {
-          const cached = JSON.parse(raw) as { mdx?: string };
-          if (cached?.mdx) {
-            if (!cancelled) {
-              setMdx(cached.mdx);
-              setError(null);
-              setLoading(false);
+      if (url) {
+        try {
+          const raw = localStorage.getItem(getCacheKey(url));
+          if (raw) {
+            const cached = JSON.parse(raw) as { mdx?: string };
+            if (cached?.mdx) {
+              if (!cancelled) {
+                setMdx(cached.mdx);
+                setError(null);
+                setLoading(false);
+              }
+              return;
             }
-            return;
           }
-        }
-      } catch {}
+        } catch {}
+      }
 
       setLoading(true);
       setError(null);
       setMdx("");
       try {
-        const res = await processRecipe({ data: { url } });
-        if (!cancelled) {
-          setMdx(res.mdx);
-          try {
-            localStorage.setItem(
-              getCacheKey(url),
-              JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
-            );
-          } catch {}
+        if (url) {
+          const res = await processRecipe({ data: { url } });
+          if (!cancelled) {
+            setMdx(res.mdx);
+            try {
+              localStorage.setItem(
+                getCacheKey(url),
+                JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
+              );
+            } catch {}
+          }
+        } else if (prompt) {
+          const res = await generateFromPrompt({ data: { prompt } });
+          if (!cancelled) setMdx(res.mdx);
         }
       } catch (err: any) {
         if (!cancelled) setError(err?.message || "Something went wrong");
@@ -156,7 +206,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, prompt]);
 
   const components = useMemo(() => {
     return { Temperature, Weight, Volume, Length } as Record<string, any>;
@@ -165,32 +215,58 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100">
       <div className="max-w-3xl mx-auto px-4 py-6">
-        {!url && (
+        {!url && !prompt && (
           <>
-            <p className="text-slate-400 mb-4">
-              Paste a recipe URL or load with <code>/?url=...</code>
-            </p>
-            <div className="flex gap-2 mb-6">
-              <input
-                className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                placeholder="https://example.com/your-recipe"
-                value={inputUrl}
-                onChange={(e) => setInputUrl(e.target.value)}
-              />
-              <a
-                href={`/?url=${encodeURIComponent(inputUrl || "")}`}
-                className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
-              >
-                Go
-              </a>
-            </div>
-            <div className="text-slate-400 text-sm">
-              Tip: open something like <code>/?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/</code>
+            <div className="grid gap-6">
+              <section className="rounded-lg border border-slate-800 bg-slate-800/40 p-4">
+                <h2 className="text-lg font-semibold mb-2">Generate</h2>
+                <p className="text-slate-400 text-sm mb-3">
+                  Tell the AI what you have or want (e.g. "I have chicken, rice, broccoli"). It will invent a simple recipe.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    placeholder="I have eggs, spinach, and feta..."
+                    value={inputPrompt}
+                    onChange={(e) => setInputPrompt(e.target.value)}
+                  />
+                  <a
+                    href={`/?prompt=${encodeURIComponent(inputPrompt || "")}`}
+                    className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
+                  >
+                    Generate
+                  </a>
+                </div>
+              </section>
+
+              <section className="rounded-lg border border-slate-800 bg-slate-800/40 p-4">
+                <h2 className="text-lg font-semibold mb-2">Import</h2>
+                <p className="text-slate-400 text-sm mb-3">
+                  Paste a recipe URL to simplify it for beginners.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    placeholder="https://example.com/your-recipe"
+                    value={inputUrl}
+                    onChange={(e) => setInputUrl(e.target.value)}
+                  />
+                  <a
+                    href={`/?url=${encodeURIComponent(inputUrl || "")}`}
+                    className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
+                  >
+                    Import
+                  </a>
+                </div>
+                <div className="text-slate-500 text-xs mt-2">
+                  Example: <code>/?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/</code>
+                </div>
+              </section>
             </div>
           </>
         )}
 
-        {url && (
+        {(url || prompt) && (
           <TemperatureProvider unit={tempUnit}>
             <WeightProvider unit={system}>
               <VolumeProvider unit={system}>
