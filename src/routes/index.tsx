@@ -65,17 +65,42 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [mdx, setMdx] = useState<string>("");
   const [inputUrl, setInputUrl] = useState(url);
+  const getCacheKey = (u: string) => `parsnip-cache::${encodeURIComponent(u)}`;
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
       if (!url) return;
+      // Try cache first to avoid redundant requests on reload
+      try {
+        const raw = localStorage.getItem(getCacheKey(url));
+        if (raw) {
+          const cached = JSON.parse(raw) as { mdx?: string };
+          if (cached?.mdx) {
+            if (!cancelled) {
+              setMdx(cached.mdx);
+              setError(null);
+              setLoading(false);
+            }
+            return;
+          }
+        }
+      } catch {}
+
       setLoading(true);
       setError(null);
       setMdx("");
       try {
         const res = await processRecipe({ data: { url } });
-        if (!cancelled) setMdx(res.mdx);
+        if (!cancelled) {
+          setMdx(res.mdx);
+          try {
+            localStorage.setItem(
+              getCacheKey(url),
+              JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
+            );
+          } catch {}
+        }
       } catch (err: any) {
         if (!cancelled) setError(err?.message || "Something went wrong");
       } finally {
