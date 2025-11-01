@@ -219,7 +219,7 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
+    <div className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="w-full flex justify-center mb-6">
           <img
@@ -231,14 +231,14 @@ function App() {
         {!url && !prompt && (
           <>
             <div className="grid gap-6">
-              <section className="rounded-lg border border-slate-800 bg-slate-800/40 p-4">
-                <h2 className="text-lg font-semibold mb-2">Generate</h2>
-                <p className="text-slate-400 text-sm mb-3">
+              <section className="rounded-xl border border-surface-dark bg-surface p-5 shadow-sm">
+                <h2 className="text-lg font-semibold mb-2 text-primary">Generate</h2>
+                <p className="text-sm mb-3 text-primary-dark/70">
                   Tell the AI what you have or want (e.g. "I have chicken, rice, broccoli"). It will invent a simple recipe.
                 </p>
                 <div className="flex gap-2">
                   <input
-                    className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="flex-1 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary"
                     placeholder="I have eggs, spinach, and feta..."
                     value={inputPrompt}
                     onChange={(e) => setInputPrompt(e.target.value)}
@@ -256,10 +256,10 @@ function App() {
                           if (!canGenerate) e.preventDefault();
                         }}
                         href={href}
-                        className={`rounded-md px-4 py-2 text-sm font-medium ${
+                        className={`rounded-md px-4 py-2 text-sm font-medium text-surface ${
                           canGenerate
-                            ? "bg-cyan-600 hover:bg-cyan-500"
-                            : "bg-cyan-600/40 cursor-not-allowed"
+                            ? "bg-primary hover:bg-primary-dark"
+                            : "bg-primary/40 cursor-not-allowed"
                         }`}
                       >
                         Generate
@@ -269,15 +269,15 @@ function App() {
                 </div>
               </section>
 
-              <section className="rounded-lg border border-slate-800 bg-slate-800/40 p-4">
-                <h2 className="text-lg font-semibold mb-2">Import</h2>
-                <p className="text-slate-400 text-sm mb-3">
+              <section className="rounded-xl border border-surface-dark bg-surface p-5 shadow-sm">
+                <h2 className="text-lg font-semibold mb-2 text-primary">Import</h2>
+                <p className="text-sm mb-3 text-primary-dark/70">
                   Paste a recipe URL to simplify it for beginners.
                 </p>
                 <div className="flex flex-col gap-3">
                   <div className="flex gap-2">
                     <input
-                      className="flex-1 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="flex-1 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="https://example.com/your-recipe"
                       value={inputUrl}
                       onChange={(e) => setInputUrl(e.target.value)}
@@ -297,10 +297,10 @@ function App() {
                             if (!canImport) e.preventDefault();
                           }}
                           href={href}
-                          className={`rounded-md px-4 py-2 text-sm font-medium ${
+                          className={`rounded-md px-4 py-2 text-sm font-medium text-surface ${
                             canImport
-                              ? "bg-cyan-600 hover:bg-cyan-500"
-                              : "bg-cyan-600/40 cursor-not-allowed"
+                              ? "bg-primary hover:bg-primary-dark"
+                              : "bg-primary/40 cursor-not-allowed"
                           }`}
                         >
                           Import
@@ -309,16 +309,16 @@ function App() {
                     })()}
                   </div>
                   <div>
-                    <label className="block text-slate-300 text-sm mb-1">Additional context (optional)</label>
+                    <label className="block text-sm mb-1 text-primary-dark">Additional context (optional)</label>
                     <textarea
-                      className="w-full min-h-20 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="w-full min-h-20 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary"
                       placeholder="Dietary requirements, substitutions, spice tolerance, allergies, tools available, etc."
                       value={inputContext}
                       onChange={(e) => setInputContext(e.target.value)}
                     />
                   </div>
                 </div>
-                <div className="text-slate-500 text-xs mt-2">
+                <div className="text-xs mt-2 text-primary-dark/60">
                   Example: <code>/?url=https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/</code>
                 </div>
               </section>
@@ -332,13 +332,13 @@ function App() {
               <VolumeProvider unit={system}>
                 <LengthProvider unit={system}>
                   <div className="flex justify-end mb-4">
-                    <div className="inline-flex rounded-md bg-slate-800 p-1">
+                    <div className="inline-flex rounded-md border border-surface-dark bg-surface p-1">
                       <button
                         onClick={() => setSystem("metric")}
                         className={`px-3 py-1 text-sm rounded ${
                           system === "metric"
-                            ? "bg-cyan-600 text-white"
-                            : "text-slate-300 hover:text-white"
+                            ? "bg-primary text-surface"
+                            : "text-primary-dark hover:bg-parsnip-leaf-light hover:text-primary-dark"
                         }`}
                         aria-pressed={system === "metric"}
                       >
@@ -348,8 +348,8 @@ function App() {
                         onClick={() => setSystem("imperial")}
                         className={`px-3 py-1 text-sm rounded ${
                           system === "imperial"
-                            ? "bg-cyan-600 text-white"
-                            : "text-slate-300 hover:text-white"
+                            ? "bg-primary text-surface"
+                            : "text-primary-dark hover:bg-parsnip-leaf-light hover:text-primary-dark"
                         }`}
                         aria-pressed={system === "imperial"}
                       >
@@ -359,19 +359,19 @@ function App() {
                   </div>
 
                   {loading && (
-                    <div className="animate-pulse rounded-md border border-slate-800 bg-slate-800/50 p-6">
+                    <div className="animate-pulse rounded-md border border-surface-dark bg-surface/60 p-6">
                       Loading recipe and rewriting for beginners...
                     </div>
                   )}
 
                   {error && (
-                    <div className="rounded-md border border-red-800 bg-red-900/20 p-4 text-red-300">
+                    <div className="rounded-md border border-red-700 bg-red-50 p-4 text-red-800">
                       {error}
                     </div>
                   )}
 
                   {!loading && !error && mdx && (
-                    <article className="prose prose-invert max-w-none">
+                    <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
                       <MdxRenderer source={mdx} components={components} />
                     </article>
                   )}
@@ -408,7 +408,7 @@ function MdxRenderer({
         if (!cancelled) setComp(() => mod.default);
       } catch (e) {
         if (!cancelled)
-          setComp(() => () => <pre className="text-red-300">{String(e)}</pre>);
+          setComp(() => () => <pre className="text-red-700">{String(e)}</pre>);
       }
     }
     run();
@@ -417,7 +417,7 @@ function MdxRenderer({
     };
   }, [source, components]);
 
-  if (!Comp) return <div className="text-slate-400">Rendering…</div>;
+  if (!Comp) return <div className="text-primary-dark/70">Rendering…</div>;
   return (
     <MDXProvider components={components}>
       <Comp />

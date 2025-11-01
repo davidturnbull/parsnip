@@ -1,8 +1,29 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@theme {
+  --color-parsnip-cream: #fdf1b5;
+  --color-parsnip-peach: #feca7f;
+  --color-parsnip-olive: #8d8743;
+  --color-parsnip-leaf: #3a6725;
+  --color-parsnip-dark: #102714;
+
+  /* Semantic color mappings */
+  --color-background: var(--color-parsnip-peach);
+  --color-surface: var(--color-parsnip-cream);
+  --color-surface-dark: var(--color-parsnip-olive);
+  --color-primary: var(--color-parsnip-leaf);
+  --color-primary-dark: var(--color-parsnip-dark);
+  --color-accent: var(--color-parsnip-olive);
+
+  /* Extended palette with opacity variants */
+  --color-parsnip-peach-light: color-mix(in srgb, var(--color-parsnip-peach) 50%, white);
+  --color-parsnip-peach-dark: color-mix(in srgb, var(--color-parsnip-peach) 80%, black);
+  --color-parsnip-leaf-light: color-mix(in srgb, var(--color-parsnip-leaf) 70%, white);
+}
+
 body {
-  @apply m-0;
+  @apply m-0 bg-background text-primary-dark;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
