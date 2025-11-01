@@ -899,6 +899,162 @@ const processRecipe = createServerFn({ method: "POST" })
     return { mdx: cleaned } satisfies Result;
   });
 
+const dumbDownRecipe = createServerFn({ method: "POST" })
+  .inputValidator((d: { existingRecipe: string; originalPrompt?: string; originalUrl?: string; originalContext?: string; language?: string; region?: string; languageLabel?: string; regionLabel?: string; regionFlag?: string }) => d)
+  .handler(async ({ data }) => {
+    const existingRecipe = data?.existingRecipe || "";
+    const originalPrompt = data?.originalPrompt || "";
+    const originalUrl = data?.originalUrl || "";
+    const originalContext = (data?.originalContext || "").trim();
+
+    if (!existingRecipe) {
+      throw new Error("Missing existing recipe");
+    }
+
+    const basePrompt = dedent`\
+      ## Context
+
+      Parsnip is an AI agent that writes and rewrite recipes.
+
+      ## Important: Web Search Requirement
+
+      **CRITICAL:** Before generating any recipe, you MUST use the webSearch tool to search for relevant recipe information. You should:
+      
+      - Search for 2-4 different recipe variations or approaches based on the user's prompt
+      - Search for ingredient substitutions, alternatives, or dietary considerations if mentioned in the context
+      - Search for cooking techniques or methods relevant to the recipe
+      - Search for any specific requirements, allergies, or dietary restrictions mentioned
+      
+      Only after gathering information from web searches should you generate the final recipe. This ensures the recipe is informed by current culinary knowledge and best practices.
+
+      ## Audience
+
+      Your target audience has the following combination of characteristics:
+
+      - adult
+      - absolute beginners to the world of cooking
+      - struggle to comprehend traditional recipes
+      - avoids cooking because it fills them with anxiety
+      - completely unfamiliar with cooking jargon
+      - easily gets lost and confused while following recipes
+
+      ## Guidelines
+
+      ### Style
+
+      - Use sentence case for headings
+      - Prefer plain, concrete language
+      - Use short, simple language
+
+      ### Recipe names
+
+      - Only specify the concrete name of the recipe
+      - Do not include any subjective qualifiers (e.g., "best", etc)
+
+      ### Tools
+
+      - Specify the tool before the quantity of the tool
+      - If only one instance of a tool is required, don't specify a quantity
+      - Sort tools from most fundamental to least fundamental
+
+      ### Ingredients
+
+      - Specify the ingredient *before* the quantity of the ingredient
+      - Sort ingredients from most fundamental (e.g., protein) to least fundamental (e.g., garnish)
+      - If a recipe is made up of multiple components (e.g., a protein and a marinade):
+          - Organize the ingredients by component
+          - Use a h3 sub-heading for each component name
+      - If an ingredient is used in multiple components, specify the ingredient for each component (with the appropriate quantity)
+
+      ### Steps
+
+      - Ensure that each step focuses on one specific action
+      - For recipes with multiple components or more than 15 total steps:
+          - Break steps into logical sections using numbered h3 sub-headings (e.g., "### Step 1: Make the rice")
+          - Match section names to the ingredient components when possible
+          - Further break down cooking processes into focused phases (e.g., "Cook the chicken", "Cook the vegetables", "Combine everything")
+          - Keep each section to approximately 8 steps or fewer to avoid overwhelming the reader
+          - Always include a final numbered step section for serving if applicable
+          - Within each step section, use a numbered list that starts from 1
+      - For simple recipes (15 steps or fewer), use a single numbered list without sections
+
+      ### Units and measurements
+
+      - ALWAYS use the globally available MDX components for ALL measurements
+      - Available components (do NOT import these):
+          - <Temperature value={numberInCelsius} />
+          - <Weight value={grams} />
+          - <Volume value={milliliters} />
+          - <Length value={centimeters} />
+      - CRITICAL: All numeric values MUST be provided in metric units only:
+          - Temperature: Celsius only
+          - Weight: grams only
+          - Volume: milliliters only
+          - Length: centimeters only
+      - NEVER provide alternative unit measurements (e.g., do NOT write "cups" or "tablespoons" or "inches" alongside metric)
+      - NEVER write unit measurements as plain text (e.g., "500g" or "2 cups" or "180°C")
+      - The MDX components will handle unit conversion automatically for the user
+      - Ensure MDX syntax is perfectly correct with proper opening and closing tags
+      - Do NOT export these components
+      - Examples:
+          - Correct: Preheat oven to <Temperature value={180} />.
+          - Correct: <Weight value={500} /> flour
+          - Correct: <Volume value={250} /> milk
+          - Correct: Use a <Length value={20} /> round pan
+          - Incorrect: 500g flour
+          - Incorrect: 2 cups (500ml) milk
+          - Incorrect: 180°C (350°F)
+          - Incorrect: 20cm / 8 inch pan
+
+      ### Output format
+
+      - Output MUST contain only the recipe content
+      - Start directly with the recipe heading (e.g., "# Scrambled eggs")
+      - End with the final line of actual recipe content
+      - Do NOT include any introductory text before the recipe
+      - Do NOT include any concluding remarks, comments, or explanations after the recipe
+      - Do NOT include phrases like "Here's the recipe:" or "This recipe..."
+
+      ---
+
+      Language: ${data?.languageLabel || data?.language || 'English'} (${data?.language || 'en'})
+      Region: ${data?.regionLabel || data?.region || 'United States'} ${data?.regionFlag || '🇺🇸'}
+      Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
+      ${originalContext ? `Additional context to consider: ${originalContext}` : ""}
+
+      ## IMPORTANT: Simplify Further
+
+      Below is a recipe that was previously generated for absolute beginners. However, the user has requested that you "dumb it down even further" because they still find it too complex or confusing.
+
+      Your task is to rewrite this recipe to be EVEN MORE SIMPLE:
+      - Use even simpler words (avoid any cooking terms that might be unfamiliar)
+      - Break down steps into even smaller, more granular actions
+      - Add more explicit guidance about what things should look like or feel like
+      - Explain every single action in the most basic terms possible
+      - Remove any assumptions about the user's prior knowledge
+      - Make each step so simple that it feels like you're explaining to someone who has never seen a kitchen before
+
+      --- ORIGINAL RECIPE START ---
+      ${existingRecipe}
+      --- ORIGINAL RECIPE END ---
+
+      Now rewrite this recipe to be even simpler and more beginner-friendly, following all the guidelines above.
+    `;
+
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      tools: {
+        webSearch,
+      },
+      stopWhen: stepCountIs(5),
+      prompt: basePrompt,
+      temperature: 0.4,
+    });
+
+    const cleaned = (text || "").trim();
+    return { mdx: cleaned } satisfies Result;
+  });
+
 export const Route = createFileRoute("/")({
   component: App,
   validateSearch: (search: Record<string, unknown>) => ({
@@ -923,6 +1079,7 @@ function App() {
   const [loadingMsgIndex, setLoadingMsgIndex] = useState(() =>
     Math.floor(Math.random() * LOADING_MESSAGES.length),
   );
+  const [dumbingDown, setDumbingDown] = useState(false);
   const getCacheKey = (u: string, c?: string) =>
     `parsnip-cache::${encodeURIComponent(u)}::${encodeURIComponent(c || "")}`;
   // Unit providers and settings are now handled globally in the root layout
@@ -1169,9 +1326,58 @@ function App() {
             )}
 
             {!loading && !error && mdx && (
-              <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
-                <MdxRenderer source={mdx} components={components} />
-              </article>
+              <>
+                <div className="mb-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setDumbingDown(true);
+                      setError(null);
+                      try {
+                        const { label: regionLabel, flag: regionFlag } = getRegionMeta(region as any);
+                        const languageLabel = getLanguageLabel(language as any);
+                        const res = await dumbDownRecipe({
+                          data: {
+                            existingRecipe: mdx,
+                            originalPrompt: prompt,
+                            originalUrl: url,
+                            originalContext: combinedContext,
+                            language,
+                            region,
+                            languageLabel,
+                            regionLabel,
+                            regionFlag,
+                          },
+                        });
+                        setMdx(res.mdx);
+                        if (url) {
+                          try {
+                            localStorage.setItem(
+                              getCacheKey(url, combinedContext),
+                              JSON.stringify({ mdx: res.mdx, ts: Date.now() }),
+                            );
+                          } catch {}
+                        }
+                      } catch (err: any) {
+                        setError(err?.message || "Something went wrong");
+                      } finally {
+                        setDumbingDown(false);
+                      }
+                    }}
+                    disabled={dumbingDown}
+                    className={`rounded-md px-4 py-2 text-sm font-medium font-ui ${
+                      dumbingDown
+                        ? "bg-primary/40 cursor-not-allowed text-surface"
+                        : "bg-primary hover:bg-primary-dark text-surface"
+                    }`}
+                  >
+                    {dumbingDown ? "Simplifying..." : "Dumb this down"}
+                  </button>
+                </div>
+                <article className="prose max-w-none prose-headings:text-primary prose-a:text-primary prose-strong:text-primary-dark">
+                  <MdxRenderer source={mdx} components={components} />
+                </article>
+              </>
             )}
           </>
         )}
