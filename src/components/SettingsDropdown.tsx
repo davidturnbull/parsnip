@@ -56,6 +56,7 @@ export function SettingsDropdown() {
               <h2 id="settings-title" className="text-lg font-ui font-ui-heading text-primary">Settings</h2>
               <button
                 aria-label="Close settings"
+                type="button"
                 className="rounded-md px-2 py-1 text-primary-dark hover:bg-parsnip-leaf-light"
                 onClick={() => setOpen(false)}
               >
@@ -66,10 +67,11 @@ export function SettingsDropdown() {
             <div className="mt-3 grid gap-6">
               <section>
                 <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">Units</div>
-                <div className="mt-2">
+                <div className="mt-2" role="radiogroup" aria-label="Unit system">
                 <button
                   role="radio"
                   aria-checked={system === 'metric'}
+                  type="button"
                   onClick={() => setSystem('metric')}
                   className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-ui hover:bg-parsnip-leaf-light hover:text-primary-dark ${
                     system === 'metric' ? 'bg-primary text-surface' : 'text-primary-dark'
@@ -86,6 +88,7 @@ export function SettingsDropdown() {
                 <button
                   role="radio"
                   aria-checked={system === 'imperial'}
+                  type="button"
                   onClick={() => setSystem('imperial')}
                   className={`mt-1 flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-ui hover:bg-parsnip-leaf-light hover:text-primary-dark ${
                     system === 'imperial' ? 'bg-primary text-surface' : 'text-primary-dark'

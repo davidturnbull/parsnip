@@ -49,11 +49,26 @@ export function Volume({ value }: { value: number }) {
 
   const { value: displayValue, unit } = convert(value)
   const formatted = displayValue >= 10 ? String(Math.round(displayValue)) : displayValue.toFixed(1)
+  const unitWord =
+    unit === 'L'
+      ? 'liters'
+      : unit === 'ml'
+      ? 'milliliters'
+      : unit === 'gal'
+      ? 'gallons'
+      : unit === 'qt'
+      ? 'quarts'
+      : unit === 'pt'
+      ? 'pints'
+      : unit === 'cup'
+      ? 'cups'
+      : unit === 'fl oz'
+      ? 'fluid ounces'
+      : 'teaspoons'
 
   return (
-    <span>
+    <span aria-label={`${formatted} ${unitWord}`} title={`${formatted} ${unitWord}`}>
       {formatted} {unit}
     </span>
   )
 }
-

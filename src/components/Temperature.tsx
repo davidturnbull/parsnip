@@ -29,13 +29,13 @@ export function Temperature({ value }: { value: number }) {
     unit === 'fahrenheit' ? (celsius * 9) / 5 + 32 : celsius
 
   const symbol = unit === 'fahrenheit' ? '°F' : '°C'
+  const unitWord = unit === 'fahrenheit' ? 'degrees Fahrenheit' : 'degrees Celsius'
   const displayValue = Math.round(convert(value))
 
   return (
-    <span>
+    <span aria-label={`${displayValue} ${unitWord}`} title={`${displayValue} ${unitWord}`}>
       {displayValue}
       {symbol}
     </span>
   )
 }
-

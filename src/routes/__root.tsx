@@ -138,6 +138,12 @@ function RootLayout() {
           <VolumeProvider unit={system}>
             <LengthProvider unit={system}>
               <div className="min-h-screen">
+                <a
+                  href="#main"
+                  className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 bg-primary text-surface px-3 py-1 rounded-md"
+                >
+                  Skip to content
+                </a>
                 <SettingsDropdown />
                 <Outlet />
               </div>

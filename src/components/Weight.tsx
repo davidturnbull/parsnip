@@ -40,11 +40,18 @@ export function Weight({ value }: { value: number }) {
 
   const { value: displayValue, unit } = convert(value)
   const formatted = displayValue >= 10 ? String(Math.round(displayValue)) : displayValue.toFixed(1)
+  const unitWord =
+    unit === 'kg'
+      ? 'kilograms'
+      : unit === 'g'
+      ? 'grams'
+      : unit === 'lb'
+      ? 'pounds'
+      : 'ounces'
 
   return (
-    <span>
+    <span aria-label={`${formatted} ${unitWord}`} title={`${formatted} ${unitWord}`}>
       {formatted} {unit}
     </span>
   )
 }
-

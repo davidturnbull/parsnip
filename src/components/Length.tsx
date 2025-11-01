@@ -32,11 +32,11 @@ export function Length({ value }: { value: number }) {
 
   const { value: displayValue, unit } = convert(value)
   const formatted = displayValue.toFixed(1)
+  const unitWord = unit === 'in' ? 'inches' : 'centimeters'
 
   return (
-    <span>
+    <span aria-label={`${formatted} ${unitWord}`} title={`${formatted} ${unitWord}`}>
       {formatted} {unit}
     </span>
   )
 }
-

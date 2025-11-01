@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
+import type React from "react";
 import { MDXProvider } from "@mdx-js/react";
 import { evaluate } from "@mdx-js/mdx";
 import * as mdxRuntime from "react/jsx-runtime";
@@ -935,17 +936,26 @@ function App() {
   }, [loading]);
 
   const components = useMemo(() => {
-    return { Temperature, Weight, Volume, Length } as Record<string, any>;
+    const A = (props: React.AnchorHTMLAttributes<HTMLAnchorElement>) => {
+      const href = props.href || '';
+      const isExternal = /^https?:\/\//i.test(href);
+      const target = isExternal ? '_blank' : props.target;
+      const rel = isExternal ? 'noopener noreferrer' : props.rel;
+      return <a {...props} target={target} rel={rel} />;
+    };
+    return { Temperature, Weight, Volume, Length, a: A } as Record<string, any>;
   }, []);
 
   return (
-    <div className="min-h-screen">
+    <main id="main" className="min-h-screen" aria-busy={loading || undefined}>
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="w-full flex items-center justify-center mb-6">
-          <img src="/logo.png" alt="Parsnip logo" className="block h-16 w-16" />
-          <span className="ml-3 text-3xl lowercase font-ui font-ui-heading text-primary-dark">
-            parsnip
-          </span>
+          <a href="/" aria-label="Parsnip home" className="flex items-center">
+            <img src="/logo.png" alt="Parsnip logo" className="block h-16 w-16" />
+            <span className="ml-3 text-3xl lowercase font-ui font-ui-heading text-primary-dark">
+              parsnip
+            </span>
+          </a>
         </div>
         {!url && !prompt && (
           <>
@@ -958,26 +968,30 @@ function App() {
                   Tell the AI what you have or want (e.g. "I have chicken, rice,
                   broccoli"). It will invent a simple recipe.
                 </p>
-                <div className="flex gap-2">
+                <form method="GET" action="/" className="flex gap-2" onSubmit={(e) => {
+                  const canGenerate = inputPrompt.trim().length > 0;
+                  if (!canGenerate) {
+                    e.preventDefault();
+                  }
+                }}>
                   <input
                     className="flex-1 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
                     placeholder="I have eggs, spinach, and feta..."
+                    aria-label="Describe ingredients or dish"
+                    name="prompt"
+                    enterKeyHint="go"
+                    autoComplete="off"
                     value={inputPrompt}
                     onChange={(e) => setInputPrompt(e.target.value)}
+                    required
                   />
                   {(() => {
                     const canGenerate = inputPrompt.trim().length > 0;
-                    const href = canGenerate
-                      ? `/?prompt=${encodeURIComponent(inputPrompt)}`
-                      : "#";
                     return (
-                      <a
-                        role="button"
+                      <button
+                        type="submit"
                         aria-disabled={!canGenerate}
-                        onClick={(e) => {
-                          if (!canGenerate) e.preventDefault();
-                        }}
-                        href={href}
+                        disabled={!canGenerate}
                         className={`rounded-md px-4 py-2 text-sm font-medium text-surface font-ui ${
                           canGenerate
                             ? "bg-primary hover:bg-primary-dark"
@@ -985,10 +999,10 @@ function App() {
                         }`}
                       >
                         Generate
-                      </a>
+                      </button>
                     );
                   })()}
-                </div>
+                </form>
               </section>
 
               <section className="rounded-xl border border-surface-dark bg-surface p-5 shadow-sm">
@@ -998,31 +1012,32 @@ function App() {
                 <p className="text-sm mb-3 text-primary-dark/70">
                   Paste a recipe URL to simplify it for beginners.
                 </p>
-                <div className="flex flex-col gap-3">
+                <form method="GET" action="/" className="flex flex-col gap-3" onSubmit={(e) => {
+                  const canImport = inputUrl.trim().length > 0;
+                  if (!canImport) {
+                    e.preventDefault();
+                  }
+                }}>
                   <div className="flex gap-2">
                     <input
                       className="flex-1 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
                       placeholder="https://example.com/your-recipe"
+                      aria-label="Recipe URL"
+                      type="url"
+                      name="url"
+                      enterKeyHint="go"
+                      autoComplete="url"
                       value={inputUrl}
                       onChange={(e) => setInputUrl(e.target.value)}
+                      required
                     />
                     {(() => {
                       const canImport = inputUrl.trim().length > 0;
-                      const href = canImport
-                        ? `/?url=${encodeURIComponent(inputUrl)}${
-                            inputContext
-                              ? `&context=${encodeURIComponent(inputContext)}`
-                              : ""
-                          }`
-                        : "#";
                       return (
-                        <a
-                          role="button"
+                        <button
+                          type="submit"
                           aria-disabled={!canImport}
-                          onClick={(e) => {
-                            if (!canImport) e.preventDefault();
-                          }}
-                          href={href}
+                          disabled={!canImport}
                           className={`rounded-md px-4 py-2 text-sm font-medium text-surface font-ui ${
                             canImport
                               ? "bg-primary hover:bg-primary-dark"
@@ -1030,22 +1045,25 @@ function App() {
                           }`}
                         >
                           Import
-                        </a>
+                        </button>
                       );
                     })()}
                   </div>
                   <div>
-                    <label className="block text-sm mb-1 text-primary-dark font-ui">
+                    <label className="block text-sm mb-1 text-primary-dark font-ui" htmlFor="import-context">
                       Additional context (optional)
                     </label>
                     <textarea
+                      id="import-context"
                       className="w-full min-h-20 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
                       placeholder="Dietary requirements, substitutions, spice tolerance, allergies, tools available, etc."
+                      aria-label="Additional context"
+                      name="context"
                       value={inputContext}
                       onChange={(e) => setInputContext(e.target.value)}
                     />
                   </div>
-                </div>
+                </form>
                 <div className="text-xs mt-2 text-primary-dark/60">
                   Example:{" "}
                   <code>
@@ -1083,7 +1101,7 @@ function App() {
           </>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 
