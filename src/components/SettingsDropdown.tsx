@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { LANGUAGES, REGIONS, type LanguageCode, type RegionCode, useSettings } from '@/components/Settings'
 import { usePaymentStatus } from '@/hooks/usePaymentStatus'
-import { PaywallOverlay } from '@/components/PaywallOverlay'
+import { Paywall } from '@/components/PaywallOverlay'
 
 export function SettingsDropdown() {
   const { system, setSystem, language, setLanguage, region, setRegion, context, setContext } = useSettings()
@@ -110,17 +110,16 @@ export function SettingsDropdown() {
               <section>
                 <div className="text-xs uppercase tracking-wide text-primary-dark/70 font-ui">Context</div>
                 <div className="mt-2">
-                  <div className="relative">
+                  {hasPaid ? (
                     <textarea
                       value={context}
                       onChange={(e) => setContext(e.target.value)}
                       placeholder="Dietary preferences, allergies, tools, style, audience..."
                       className="w-full min-h-24 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm font-sans text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary"
-                      disabled={!hasPaid}
-                      readOnly={!hasPaid}
                     />
-                    {!hasPaid && <PaywallOverlay />}
-                  </div>
+                  ) : (
+                    <Paywall minHeight="min-h-24" />
+                  )}
                   <div className="mt-1 text-xs text-primary-dark/60">This will be included with all generations and imports.</div>
                 </div>
               </section>

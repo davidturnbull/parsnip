@@ -16,7 +16,7 @@ import { Volume } from "@/components/Volume";
 import { Length } from "@/components/Length";
 import { useSettings, getLanguageLabel, getRegionMeta } from "@/components/Settings";
 import { usePaymentStatus } from "@/hooks/usePaymentStatus";
-import { PaywallOverlay } from "@/components/PaywallOverlay";
+import { Paywall } from "@/components/PaywallOverlay";
 import { verifyPayment } from "@/api/stripe";
 import dedent from "dedent";
 
@@ -1400,7 +1400,7 @@ function App() {
                     <label className="block text-sm mb-1 text-primary-dark font-ui" htmlFor="import-context">
                       Additional context (optional)
                     </label>
-                    <div className="relative">
+                    {hasPaid ? (
                       <textarea
                         id="import-context"
                         className="w-full min-h-20 rounded-md border border-surface-dark bg-surface px-3 py-2 text-sm text-primary-dark placeholder:text-primary-dark/60 focus:outline-none focus:ring-2 focus:ring-primary font-sans"
@@ -1409,11 +1409,10 @@ function App() {
                         name="context"
                         value={inputContext}
                         onChange={(e) => setInputContext(e.target.value)}
-                        disabled={!hasPaid}
-                        readOnly={!hasPaid}
                       />
-                      {!hasPaid && <PaywallOverlay />}
-                    </div>
+                    ) : (
+                      <Paywall minHeight="min-h-20" />
+                    )}
                   </div>
                 </form>
                 <div className="text-xs mt-2 text-primary-dark/60">
