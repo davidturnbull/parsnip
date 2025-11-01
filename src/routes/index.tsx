@@ -234,12 +234,29 @@ function App() {
                     value={inputPrompt}
                     onChange={(e) => setInputPrompt(e.target.value)}
                   />
-                  <a
-                    href={`/?prompt=${encodeURIComponent(inputPrompt || "")}`}
-                    className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
-                  >
-                    Generate
-                  </a>
+                  {(() => {
+                    const canGenerate = inputPrompt.trim().length > 0;
+                    const href = canGenerate
+                      ? `/?prompt=${encodeURIComponent(inputPrompt)}`
+                      : "#";
+                    return (
+                      <a
+                        role="button"
+                        aria-disabled={!canGenerate}
+                        onClick={(e) => {
+                          if (!canGenerate) e.preventDefault();
+                        }}
+                        href={href}
+                        className={`rounded-md px-4 py-2 text-sm font-medium ${
+                          canGenerate
+                            ? "bg-cyan-600 hover:bg-cyan-500"
+                            : "bg-cyan-600/40 cursor-not-allowed"
+                        }`}
+                      >
+                        Generate
+                      </a>
+                    );
+                  })()}
                 </div>
               </section>
 
@@ -256,12 +273,31 @@ function App() {
                       value={inputUrl}
                       onChange={(e) => setInputUrl(e.target.value)}
                     />
-                    <a
-                      href={`/?url=${encodeURIComponent(inputUrl || "")}${inputContext ? `&context=${encodeURIComponent(inputContext)}` : ""}`}
-                      className="rounded-md bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-sm font-medium"
-                    >
-                      Import
-                    </a>
+                    {(() => {
+                      const canImport = inputUrl.trim().length > 0;
+                      const href = canImport
+                        ? `/?url=${encodeURIComponent(inputUrl)}${
+                            inputContext ? `&context=${encodeURIComponent(inputContext)}` : ""
+                          }`
+                        : "#";
+                      return (
+                        <a
+                          role="button"
+                          aria-disabled={!canImport}
+                          onClick={(e) => {
+                            if (!canImport) e.preventDefault();
+                          }}
+                          href={href}
+                          className={`rounded-md px-4 py-2 text-sm font-medium ${
+                            canImport
+                              ? "bg-cyan-600 hover:bg-cyan-500"
+                              : "bg-cyan-600/40 cursor-not-allowed"
+                          }`}
+                        >
+                          Import
+                        </a>
+                      );
+                    })()}
                   </div>
                   <div>
                     <label className="block text-slate-300 text-sm mb-1">Additional context (optional)</label>
