@@ -23,6 +23,7 @@ import { usePaymentStatus } from "@/hooks/usePaymentStatus";
 import { Paywall } from "@/components/PaywallOverlay";
 import { verifyPayment } from "@/api/stripe";
 import dedent from "dedent";
+// Lucky generation: AI chooses a random recipe respecting global context
 
 const webSearch = tool({
   description:
@@ -1045,6 +1046,416 @@ ${context}
     return result.toTextStreamResponse();
   });
 
+// Server function to generate a random recipe that respects the user's global context
+const generateLucky = createServerFn({ method: "POST" })
+  .inputValidator(
+    (d: {
+      context?: string;
+      language?: string;
+      region?: string;
+      languageLabel?: string;
+      regionLabel?: string;
+      regionFlag?: string;
+    }) => d
+  )
+  .handler(async ({ data }) => {
+    const result = await streamText({
+      model: openai("gpt-4o-mini"),
+      tools: {
+        webSearch,
+      },
+      stopWhen: stepCountIs(5),
+      prompt: dedent`\
+        ## Context
+
+        Parsnip is an AI agent that writes and rewrite recipes.
+        ${
+          data?.context
+            ? `\n### **CRITICAL: User Requirements**
+
+The following user-provided context MUST be strictly adhered to when generating the recipe:
+${data.context}
+
+**IMPORTANT:** Every aspect of this context (dietary restrictions, allergies, preferences, tools available, etc.) must be carefully considered and incorporated into the recipe.`
+            : ""
+        }
+
+        ## Important: Web Search Requirement
+
+        **CRITICAL:** Before generating any recipe, you MUST use the webSearch tool to search for relevant recipe information. You should:
+        
+        - Search for 2-4 different recipe variations or approaches based on the chosen dish
+        - Search for ingredient substitutions, alternatives, or dietary considerations if mentioned in the context
+        - Search for cooking techniques or methods relevant to the recipe
+        - Search for any specific requirements, allergies, or dietary restrictions mentioned
+        
+        Only after gathering information from web searches should you generate the final recipe. This ensures the recipe is informed by current culinary knowledge and best practices.
+
+        ## Audience
+
+        Your target audience has the following combination of characteristics:
+
+        - adult
+        - absolute beginners to the world of cooking
+        - struggle to comprehend traditional recipes
+        - avoids cooking because it fills them with anxiety
+        - completely unfamiliar with cooking jargon
+        - easily gets lost and confused while following recipes
+
+        ## Guidelines
+
+        ### Style
+
+        - Use sentence case for headings
+        - Prefer plain, concrete language
+        - Use short, simple language
+
+        ### Recipe names
+
+        - Only specify the concrete name of the recipe
+        - Do not include any subjective qualifiers (e.g., "best", etc)
+
+        ### Tools
+
+        - Specify the tool before the quantity of the tool
+        - If only one instance of a tool is required, don't specify a quantity
+        - Sort tools from most fundamental to least fundamental
+
+        ### Ingredients
+
+        - Specify the ingredient *before* the quantity of the ingredient
+        - Sort ingredients from most fundamental (e.g., protein) to least fundamental (e.g., garnish)
+        - If a recipe is made up of multiple components (e.g., a protein and a marinade):
+            - Organize the ingredients by component
+            - Use a h3 sub-heading for each component name
+        - If an ingredient is used in multiple components, specify the ingredient for each component (with the appropriate quantity)
+
+        ### Steps
+
+        - Ensure that each step focuses on one specific action
+        - For recipes with multiple components or more than 15 total steps:
+            - Break steps into logical sections using numbered h3 sub-headings (e.g., "### Step 1: Make the rice")
+            - Match section names to the ingredient components when possible
+            - Further break down cooking processes into focused phases (e.g., "Cook the chicken", "Cook the vegetables", "Combine everything")
+            - Keep each section to approximately 8 steps or fewer to avoid overwhelming the reader
+            - Always include a final numbered step section for serving if applicable
+            - Within each step section, use a numbered list that starts from 1
+        - For simple recipes (15 steps or fewer), use a single numbered list without sections
+
+        ### Units and measurements
+
+        - ALWAYS use the globally available MDX components for ALL measurements
+        - Available components (do NOT import these):
+            - <Temperature value={numberInCelsius} />
+            - <Weight value={grams} />
+            - <Volume value={milliliters} />
+            - <Length value={centimeters} />
+        - CRITICAL: All numeric values MUST be provided in metric units only:
+            - Temperature: Celsius only
+            - Weight: grams only
+            - Volume: milliliters only
+            - Length: centimeters only
+        - NEVER provide alternative unit measurements (e.g., do NOT write "cups" or "tablespoons" or "inches" alongside metric)
+        - NEVER write unit measurements as plain text (e.g., "500g" or "2 cups" or "180°C")
+        - The MDX components will handle unit conversion automatically for the user
+        - Ensure MDX syntax is perfectly correct with proper opening and closing tags
+        - Do NOT export these components
+        - Examples:
+            - Correct: Preheat oven to <Temperature value={180} />.
+            - Correct: <Weight value={500} /> flour
+            - Correct: <Volume value={250} /> milk
+            - Correct: Use a <Length value={20} /> round pan
+            - Incorrect: 500g flour
+            - Incorrect: 2 cups (500ml) milk
+            - Incorrect: 180°C (350°F)
+            - Incorrect: 20cm / 8 inch pan
+
+        ### Output format
+
+        - Output MUST contain only the recipe content
+        - Start directly with the recipe heading (e.g., "# Scrambled eggs")
+        - End with the final line of actual recipe content
+        - Do NOT include any introductory text before the recipe
+        - Do NOT include any concluding remarks, comments, or explanations after the recipe
+        - Do NOT include phrases like "Here's the recipe:" or "This recipe..."
+
+        ## Examples
+
+        ### Example 1: Simple recipe (no sections needed)
+
+        **Input:** "scrambled eggs"
+
+        **Output:**
+
+        # Scrambled eggs
+
+        ## Tools
+
+        - Stove
+        - Small bowl
+        - Fork
+        - Non-stick pan
+        - Spatula
+
+        ## Ingredients
+
+        - Eggs (2)
+        - Butter (<Weight value={15} />)
+        - Salt (a pinch)
+
+        ## Steps
+
+        1. Crack the eggs into the small bowl by tapping each egg on the counter until it cracks, then pulling the shell apart over the bowl.
+
+        2. Use the fork to mix the eggs in the bowl until the yellow and clear parts are completely combined.
+
+        3. Turn the stove dial to medium heat.
+
+        4. Put the butter in the pan.
+
+        5. Wait until the butter melts and starts to bubble slightly.
+
+        6. Pour the mixed eggs from the bowl into the pan.
+
+        7. Let the eggs sit without touching them for 10 seconds.
+
+        8. Use the spatula to gently push the eggs from the edge of the pan toward the center.
+
+        9. Keep pushing the eggs slowly every few seconds as they start to look solid instead of liquid.
+
+        10. Turn off the stove when the eggs still look slightly wet and shiny.
+
+        11. Sprinkle the salt on top of the eggs.
+
+        12. Use the spatula to move the eggs from the pan onto a plate.
+
+        ### Example 2: Complex recipe with multiple components (sections required)
+
+        **Input:** "chicken stir fry with rice"
+
+        **Output:**
+
+        # Chicken stir fry with rice
+
+        ## Tools
+
+        - Stove
+        - Medium pot with lid
+        - Measuring cup
+        - Large pan or wok
+        - Cutting board
+        - Sharp knife
+        - Large spoon or spatula
+        - Small bowl
+
+        ## Ingredients
+
+        ### Rice
+
+        - White rice (<Weight value={200} />)
+        - Water (<Volume value={500} />)
+        - Salt (a pinch)
+
+        ### Stir fry
+
+        - Chicken breast (<Weight value={400} />)
+        - Carrot (1, medium)
+        - Broccoli (1 small head)
+        - Garlic (2 cloves)
+        - Soy sauce (<Volume value={30} />)
+        - Vegetable oil (<Volume value={45} />)
+        - Water (<Volume value={30} />)
+        - Salt (a pinch)
+
+        ## Steps
+
+        ### Step 1: Cook the rice
+
+        1. Pour the rice into the medium pot.
+
+        2. Pour the water into the pot with the rice.
+
+        3. Add a pinch of salt to the pot.
+
+        4. Put the pot on the stove and turn the heat to high.
+
+        5. Wait until you see big bubbles and steam.
+
+        6. Turn the heat down to low and put the lid on the pot.
+
+        7. Turn the heat down to low and put the lid on the pot.
+
+        8. Set a timer for 15 minutes and leave the pot alone.
+
+        ### Step 2: Prepare the stir fry ingredients
+
+        1. While the rice cooks, place the chicken on the cutting board.
+
+        2. Cut the chicken into pieces about the size of your thumb.
+
+        3. Cut the carrot into thin circles, like coins.
+
+        4. Break the broccoli into small pieces about the size of a golf ball.
+
+        5. Peel the papery skin off the garlic cloves.
+
+        6. Cut the garlic into very small pieces.
+
+        ### Step 3: Cook the chicken
+
+        1. Put the large pan on the stove and turn the heat to medium-high.
+
+        2. Pour <Volume value={30} /> of the oil into the pan.
+
+        3. Wait 1 minute for the oil to heat up.
+
+        4. Put the chicken pieces in the pan and spread them out.
+
+        5. Let the chicken cook without moving it for 2 minutes.
+
+        6. Use the spoon to flip each piece of chicken over.
+
+        7. Cook for another 2 minutes without moving the chicken.
+
+        8. Use the spoon to move the chicken to the small bowl.
+
+        ### Step 4: Cook the vegetables
+
+        1. Pour the remaining <Volume value={15} /> of oil into the same pan.
+
+        2. Add the garlic pieces to the pan.
+
+        3. Stir the garlic with the spoon for 30 seconds.
+
+        4. Add the carrot circles to the pan.
+
+        5. Stir everything for 2 minutes.
+
+        6. Add the broccoli pieces to the pan.
+
+        7. Add the <Volume value={30} /> of water to the pan.
+
+        8. Stir everything for 3 minutes.
+
+        ### Step 5: Combine everything
+
+        1. Put the chicken back into the pan with the vegetables.
+
+        2. Pour the soy sauce over everything in the pan.
+
+        3. Add a pinch of salt.
+
+        4. Stir everything together for 1 minute.
+
+        5. Turn off the stove under the pan.
+
+        6. Turn off the stove under the rice pot.
+
+        ### Step 6: Serve
+
+        1. Use the spoon to scoop rice onto a plate.
+
+        2. Use the spoon to put the chicken and vegetables on top of the rice.
+
+        ### Example 3: Moderately complex recipe (sections improve clarity)
+
+        **Input:** "grilled cheese sandwich and tomato soup"
+
+        **Output:**
+
+        # Grilled cheese sandwich and tomato soup
+
+        ## Tools
+
+        - Stove
+        - Medium pot
+        - Can opener
+        - Cutting board
+        - Butter knife
+        - Large pan
+        - Spatula
+
+        ## Ingredients
+
+        ### Soup
+
+        - Canned tomato soup (1 can, <Weight value={400} />)
+        - Milk (<Volume value={120} />)
+
+        ### Sandwich
+
+        - Bread (2 slices)
+        - Cheddar cheese (2 slices, about <Weight value={50} />)
+        - Butter (<Weight value={30} />)
+
+        ## Steps
+
+        ### Step 1: Make the soup
+
+        1. Use the can opener to open the can of tomato soup.
+
+        2. Pour the soup from the can into the medium pot.
+
+        3. Fill the empty soup can halfway with milk.
+
+        4. Pour the milk into the pot with the soup.
+
+        5. Put the pot on the stove and turn the heat to medium.
+
+        6. Stir the soup every minute until you see small bubbles around the edges.
+
+        7. Turn the heat down to low.
+
+        ### Step 2: Make the sandwich
+
+        1. Place the 2 slices of bread on the cutting board.
+
+        2. Put 1 slice of cheese on top of one piece of bread.
+
+        3. Put the second slice of cheese on top of the first slice.
+
+        4. Place the second piece of bread on top of the cheese.
+
+        5. Use the butter knife to spread <Weight value={15} /> of butter on the top slice of bread.
+
+        6. Put the large pan on the stove and turn the heat to medium.
+
+        7. Wait 1 minute for the pan to heat up.
+
+        8. Carefully pick up the sandwich and place it in the pan with the buttered side down.
+
+        9. Use the butter knife to spread the remaining <Weight value={15} /> of butter on the top slice of bread that is now facing up.
+
+        10. Let the sandwich cook for 3 minutes without moving it.
+
+        11. Use the spatula to flip the sandwich over.
+
+        12. Let the sandwich cook for another 3 minutes.
+
+        13. Turn off the stove under the pan.
+
+        ### Step 3: Serve
+
+        1. Use the spatula to move the sandwich to a plate.
+
+        2. Turn off the stove under the soup pot.
+
+        3. Pour the soup into a bowl.
+
+        ---
+
+        Language: ${data?.languageLabel || data?.language || "English"} (${data?.language || "en"})
+        Region: ${data?.regionLabel || data?.region || "United States"} ${data?.regionFlag || "🇺🇸"}
+        Use the specified language for all text. Prefer regional terminology/spelling for the given region when relevant.
+
+        Now choose a specific dish that fits the context, then produce the recipe that follows all rules above. Do not ask the user for input.
+      `,
+      temperature: 0.4,
+    });
+
+    return result.toTextStreamResponse();
+  });
+
 const dumbDownRecipe = createServerFn({ method: "POST" })
   .inputValidator(
     (d: {
@@ -1227,14 +1638,21 @@ export const Route = createFileRoute("/")({
     url: (search.url as string) || "",
     prompt: (search.prompt as string) || "",
     context: (search.context as string) || "",
+    lucky: Boolean(
+      search.lucky === "1" ||
+        search.lucky === 1 ||
+        search.lucky === true ||
+        search.lucky === "true"
+    ),
   }),
 });
 
 function App() {
-  const { url, prompt, context } = Route.useSearch() as {
+  const { url, prompt, context, lucky } = Route.useSearch() as {
     url: string;
     prompt: string;
     context: string;
+    lucky: boolean;
   };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1281,7 +1699,7 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!url && !prompt) return;
+      if (!url && !prompt && !lucky) return;
       // Try cache first to avoid redundant requests on reload
       if (url) {
         try {
@@ -1383,6 +1801,39 @@ function App() {
               setMdx(accumulatedText.trim());
             }
           }
+        } else if (lucky) {
+          const { label: regionLabel, flag: regionFlag } = getRegionMeta(
+            region as any
+          );
+          const languageLabel = getLanguageLabel(language as any);
+          const response = await generateLucky({
+            data: {
+              context: combinedContext,
+              language,
+              region,
+              languageLabel,
+              regionLabel,
+              regionFlag,
+            },
+          });
+          if (!response.body) {
+            throw new Error("No response body");
+          }
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          while (true) {
+            if (cancelled) {
+              reader.cancel();
+              break;
+            }
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            accumulatedText += chunk;
+            if (!cancelled) {
+              setMdx(accumulatedText.trim());
+            }
+          }
         }
       } catch (err: any) {
         if (!cancelled) setError(err?.message || "Something went wrong");
@@ -1396,7 +1847,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [url, prompt, context, language, region, globalContext, combinedContext]);
+  }, [url, prompt, lucky, context, language, region, globalContext, combinedContext]);
 
   // Rotate whimsical loading messages while loading
   useEffect(() => {
@@ -1447,7 +1898,7 @@ function App() {
             </span>
           </a>
         </div>
-        {!url && !prompt && (
+        {!url && !prompt && !lucky && (
           <>
             <div className="grid gap-6">
               <section className="rounded-xl border border-surface-dark bg-surface p-5 shadow-sm">
@@ -1483,18 +1934,31 @@ function App() {
                   {(() => {
                     const canGenerate = inputPrompt.trim().length > 0;
                     return (
-                      <button
-                        type="submit"
-                        aria-disabled={!canGenerate}
-                        disabled={!canGenerate}
-                        className={`rounded-md px-4 py-2 text-sm font-medium text-surface font-ui ${
-                          canGenerate
-                            ? "bg-primary hover:bg-primary-dark"
-                            : "bg-primary/40 cursor-not-allowed"
-                        }`}
-                      >
-                        Generate
-                      </button>
+                      <>
+                        <button
+                          type="submit"
+                          aria-disabled={!canGenerate}
+                          disabled={!canGenerate}
+                          className={`rounded-md px-4 py-2 text-sm font-medium text-surface font-ui ${
+                            canGenerate
+                              ? "bg-primary hover:bg-primary-dark"
+                              : "bg-primary/40 cursor-not-allowed"
+                          }`}
+                        >
+                          Generate
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Generate a random recipe using my settings"
+                          className="rounded-md px-4 py-2 text-sm font-medium font-ui border border-surface-dark bg-surface text-primary-dark hover:bg-parsnip-peach-light"
+                          onClick={() => {
+                            const url = `/?lucky=1`
+                            window.location.href = url
+                          }}
+                        >
+                          I'm feeling lucky
+                        </button>
+                      </>
                     );
                   })()}
                 </form>
@@ -1582,7 +2046,7 @@ function App() {
           </>
         )}
 
-        {(url || prompt) && (
+        {(url || prompt || lucky) && (
           <>
             {loading && !hasValidMdx && (
               <div
