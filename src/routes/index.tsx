@@ -1845,6 +1845,9 @@ function App() {
               regionFlag,
             },
           });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           if (!response.body) {
             throw new Error("No response body");
           }
@@ -1856,12 +1859,21 @@ function App() {
               break;
             }
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              const finalChunk = decoder.decode();
+              if (finalChunk) {
+                accumulatedText += finalChunk;
+              }
+              break;
+            }
             const chunk = decoder.decode(value, { stream: true });
             accumulatedText += chunk;
             if (!cancelled) {
               setMdx(accumulatedText.trim());
             }
+          }
+          if (!cancelled && !accumulatedText.trim()) {
+            throw new Error("Received empty response from server");
           }
           if (!cancelled && accumulatedText) {
             const finalText = accumulatedText.trim();
@@ -1888,6 +1900,9 @@ function App() {
               regionFlag,
             },
           });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           if (!response.body) {
             throw new Error("No response body");
           }
@@ -1899,12 +1914,21 @@ function App() {
               break;
             }
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              const finalChunk = decoder.decode();
+              if (finalChunk) {
+                accumulatedText += finalChunk;
+              }
+              break;
+            }
             const chunk = decoder.decode(value, { stream: true });
             accumulatedText += chunk;
             if (!cancelled) {
               setMdx(accumulatedText.trim());
             }
+          }
+          if (!cancelled && !accumulatedText.trim()) {
+            throw new Error("Received empty response from server");
           }
         } else if (lucky) {
           const { label: regionLabel, flag: regionFlag } = getRegionMeta(
@@ -1921,6 +1945,9 @@ function App() {
               regionFlag,
             },
           });
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
           if (!response.body) {
             throw new Error("No response body");
           }
@@ -1932,16 +1959,29 @@ function App() {
               break;
             }
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              const finalChunk = decoder.decode();
+              if (finalChunk) {
+                accumulatedText += finalChunk;
+              }
+              break;
+            }
             const chunk = decoder.decode(value, { stream: true });
             accumulatedText += chunk;
             if (!cancelled) {
               setMdx(accumulatedText.trim());
             }
           }
+          if (!cancelled && !accumulatedText.trim()) {
+            throw new Error("Received empty response from server");
+          }
         }
       } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Something went wrong");
+        if (!cancelled) {
+          setError(err?.message || "Something went wrong");
+          setLoading(false);
+          setMdx("");
+        }
       } finally {
         if (!cancelled && !hasValidMdx) {
           setLoading(false);
